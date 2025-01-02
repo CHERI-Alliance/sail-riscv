@@ -161,7 +161,7 @@ function prepare_shv_clic_trap_vector(p : Privilege, code : exc_code) -> xlenbit
 
 // Return the address for a hardware vectored CLIC xret.
 function prepare_clic_xret_vectored_target(p : Privilege) -> xlenbits = {
-  // "The trap handler function address is obtained from the current privilege mode’s
+  // "The trap handler function address is obtained from the current privilege mode's
   // xepc with the low bits of the address cleared to force the access to be naturally
   // aligned to an XLEN/8-byte table entry."
   let table_entry_addr = get_xepc(p) & ~(zero_extend(ones(log2_xlen_bytes)));

@@ -118,7 +118,7 @@ function process_vset(vtype_bits_new : xlenbits, AVL : option(nat), rd : regidx)
   let vl_new = if avl <= VLMAX then to_bits(xlen, avl)
         else if avl < 2 * VLMAX then to_bits(xlen, VLMAX)
         else to_bits(xlen, VLMAX);
-  /* Note: ceil(AVL / 2) ≤ vl ≤ VLMAX when VLMAX < AVL < (2 * VLMAX)
+  /* Note: ceil(AVL / 2) <= vl <= VLMAX when VLMAX < AVL < (2 * VLMAX)
     * TODO: configuration support for either using ceil(AVL / 2) or VLMAX
     */
   X(rd) = vl_new;
