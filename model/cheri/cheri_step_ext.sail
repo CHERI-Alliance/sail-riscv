@@ -39,7 +39,10 @@ function ext_reset_cheri() -> unit = {
   };
 }
 
-function ext_reset() -> unit = if get_config_rvfi() then ext_rvfi_reset() else ext_reset_cheri()
+function ext_reset() -> unit = {
+  ext_reset_cheri();
+  if get_config_rvfi() then ext_rvfi_reset();
+}
 
 function ext_reset_misa() -> unit = ()
 
