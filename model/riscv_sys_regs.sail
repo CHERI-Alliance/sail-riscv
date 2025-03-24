@@ -10,15 +10,7 @@
 
 /* privilege level */
 
-/* whether Sdtrig was enabled at boot */
-val sys_enable_sdtrig = {c: "sys_enable_sdtrig", ocaml: "Platform.enable_sdtrig", _: "sys_enable_sdtrig"} : unit -> bool
-function haveSdtrig() -> bool = sys_enable_sdtrig()
-
-/* whether Sdext was enabled at boot */
-val sys_enable_sdext = {c: "sys_enable_sdext", ocaml: "Platform.enable_sdext", _: "sys_enable_sdext"} : unit -> bool
-function haveSdext() -> bool = sys_enable_sdext()
-
-register debug_mode_active : bool
+register debug_mode_active : bool = false
 
 // The underlying privilege if we were not in debug mode.
 register true_cur_privilege : Privilege
@@ -96,7 +88,11 @@ bitfield Misa : xlenbits = {
   B    : 1,
   A    : 0
 }
-register misa : Misa
+register misa : Misa =
+  [ Mk_Misa(zeros()) with
+    // MXL is a read-only field that specifies the native XLEN.
+    MXL = architecture(if xlen == 32 then RV32 else RV64),
+  ]
 
 /* whether misa is R/W */
 val sys_enable_writable_misa = pure "sys_enable_writable_misa" : unit -> bool
@@ -124,63 +120,31 @@ val sys_enable_zbb = pure "sys_enable_zbb" : unit -> bool
 val sys_enable_zbc = pure "sys_enable_zbc" : unit -> bool
 /* whether Zbs was enabled at boot */
 val sys_enable_zbs = pure "sys_enable_zbs" : unit -> bool
-/* whether the N extension was enabled at boot */
-val sys_enable_next = pure "sys_enable_next" : unit -> bool
-/* whether Zkn was enabled at boot */
-val sys_enable_zkn = pure "sys_enable_zkn" : unit -> bool
-/* whether Zks was enabled at boot */
-val sys_enable_zks = pure "sys_enable_zks" : unit -> bool
-
-/* Which HPM counters are supported (as a bit mask). Bits [2 .. 0] are ignored. */
-// val sys_writable_hpm_counters = pure "sys_writable_hpm_counters" : unit -> bits(32)
+/* whether Crypto extensions were enabled at boot */
+val sys_enable_zbkb = pure "sys_enable_zbkb" : unit -> bool
+val sys_enable_zbkc = pure "sys_enable_zbkc" : unit -> bool
+val sys_enable_zbkx = pure "sys_enable_zbkx" : unit -> bool
+val sys_enable_zknd = pure "sys_enable_zknd" : unit -> bool
+val sys_enable_zkne = pure "sys_enable_zkne" : unit -> bool
+val sys_enable_zknh = pure "sys_enable_zknh" : unit -> bool
+val sys_enable_zksed = pure "sys_enable_zksed" : unit -> bool
+val sys_enable_zksh = pure "sys_enable_zksh" : unit -> bool
+/* whether misa.X should be set to indicate non-standard extensions */
+val sys_misa_x = pure "sys_misa_x" : unit -> bool
 
 // Force the set bits of mcountinhibit to 1
-// val sys_force_countinhibit_bits = pure "sys_force_countinhibit_bits" : unit -> bits(32)
+val sys_force_countinhibit_bits = pure "sys_force_countinhibit_bits" : unit -> bits(32)
 
-// val sys_hpmevent_writable_bits = pure "sys_hpmevent_writable_bits" : unit -> bits(64)
-// val sys_medeleg_writable_bits = pure "sys_medeleg_writable_bits" : unit -> bits(64)
-// val sys_mideleg_writable_bits = pure "sys_mideleg_writable_bits" : unit -> bits(64)
-// val sys_xtvec_writable_bits = pure "sys_xtvec_writable_bits" : unit -> bits(64)
-// val sys_xcause_bits = pure "sys_xcause_bits" : unit -> range(0, 64)
-// TODO
-function sys_writable_hpm_counters() -> bits(32) = ones()
-function sys_force_countinhibit_bits() -> bits(32) = zeros()
-function sys_hpmevent_writable_bits() -> bits(64) = ones()
-function sys_medeleg_writable_bits() -> bits(64) = ones()
-function sys_mideleg_writable_bits() -> bits(64) = ones()
-function sys_xtvec_writable_bits() -> bits(64) = ones()
-function sys_xcause_bits() -> range(0, 64) = 64
+val sys_medeleg_writable_bits = pure "sys_medeleg_writable_bits" : unit -> bits(64)
+val sys_mideleg_writable_bits = pure "sys_mideleg_writable_bits" : unit -> bits(64)
+val sys_xtvec_writable_bits = pure "sys_xtvec_writable_bits" : unit -> bits(64)
 
-// Number of CLIC interrupts supported
-// val sys_clic_num_interrupts = pure "sys_clic_num_interrupts" : unit -> range(32,4096)
-// TODO
-function sys_clic_num_interrupts() -> range(32, 4096) = 4096
-
-// Number of CLICINTCTL bits implemented
-// val sys_clicintctl_writable_bits = pure "sys_clicintctl_writable_bits" : unit -> range(0,8)
-// TODO
-function sys_clicintctl_writable_bits() -> range(0, 8) = 8
-
-// TODO (CLIC): Ideally we need callbacks for the parameters in 8.4. Additional CLIC Parameters
-//
-// Name            Value Range                  Description
-// ------------------------------------------------------------------------------------------
-// CLICANDBASIC    0-1                          Implements CLINT mode also?
-// CLICPRIVMODES   1-3                          Number privilege modes: 1=M, 2=M/U, 3=M/S/U
-// CLICLEVELS      2-256                        Number of interrupt levels including 0
-// CLICMAXID       12-4095                      Largest interrupt ID
-// INTTHRESHBITS   1-8                          Number of bits implemented in {intthresh}.th
-// CLICCFGMBITS    0-ceil(lg2(CLICPRIVMODES))   Number of bits implemented for cliccfg.nmbits
-// CLICCFGLBITS    0-ceil(lg2(CLICLEVELS))      Number of bits implemented for cliccfg.nlbits
-// CLICMTVECALIGN  >= 6                         Number of hardwired-zero least significant bits in mtvec address.
-
+val sys_xcause_bits = pure "sys_xcause_bits" : unit -> range(0, 64)
 
 /* How many PMP entries are implemented. This must be 0, 16 or 64 (this is checked at runtime). */
 val sys_pmp_count = pure "sys_pmp_count" : unit -> range(0, 64)
 /* Which PMP entries are writable. This is a bitmask. 1 means writable, 0 means read-only zero. */
-// val sys_pmp_writable = pure "sys_pmp_writable" : unit -> bits(64)
-// TODO
-function sys_pmp_writable() -> bits(64) = ones()
+val sys_pmp_writable = pure "sys_pmp_writable" : unit -> bits(64)
 /* G parameter that specifies the PMP grain size. The grain size is 2^(G+2), e.g.
    G=0 -> 4 bytes, G=10 -> 4096 bytes. */
 val sys_pmp_grain = pure "sys_pmp_grain" : unit -> range(0, 63)
@@ -190,25 +154,21 @@ val sys_writable_hpm_counters = pure "sys_writable_hpm_counters" : unit -> bits(
 
 // Physical address size. This must be at least 12 so you can address one page.
 // The minimum of 13 is due to https://github.com/rems-project/sail/issues/471
-// val sys_pa_bits = "sys_pa_bits" : unit -> range(13, if xlen == 32 then 34 else 56)
-// TODO
-function sys_pa_bits() -> range(13, if xlen == 32 then 34 else 56) = if xlen == 32 then 34 else 56
+val sys_pa_bits = pure "sys_pa_bits" : unit -> range(13, if xlen == 32 then 34 else 56)
 
 // Address Space ID size (max 16 bits). Currently this must be at least 1 due to
 // https://github.com/rems-project/sail/issues/471
-// val sys_asid_bits = "sys_asid_bits" : unit -> range(1, if xlen == 32 then 9 else 16)
-// TODO
-function sys_asid_bits() -> range(1, if xlen == 32 then 9 else 16) = if xlen == 32 then 9 else 16
+val sys_asid_bits = pure "sys_asid_bits" : unit -> range(1, if xlen == 32 then 9 else 16)
 
 /* Which virtual addressing modes are supported. Note Sv57 is not implemented yet. */
-val sys_enable_sv32 = "sys_enable_sv32" : unit -> bool
-val sys_enable_sv39 = "sys_enable_sv39" : unit -> bool
-val sys_enable_sv48 = "sys_enable_sv48" : unit -> bool
-val sys_enable_sv57 = "sys_enable_sv57" : unit -> bool
+val sys_enable_sv32 = pure "sys_enable_sv32" : unit -> bool
+val sys_enable_sv39 = pure "sys_enable_sv39" : unit -> bool
+val sys_enable_sv48 = pure "sys_enable_sv48" : unit -> bool
+val sys_enable_sv57 = pure "sys_enable_sv57" : unit -> bool
 
-val sys_enable_tlb = "sys_enable_tlb" : unit -> bool
+val sys_enable_tlb = pure "sys_enable_tlb" : unit -> bool
 
-val sys_enable_svnapot = "sys_enable_svnapot" : unit -> bool
+val sys_enable_svnapot = pure "sys_enable_svnapot" : unit -> bool
 
 /* whether misa.v was enabled at boot */
 val sys_enable_vext = pure "sys_enable_vext" : unit -> bool
@@ -221,10 +181,8 @@ val sys_enable_bext = pure "sys_enable_bext" : unit -> bool
 val sys_enable_zicbom = pure "sys_enable_zicbom" : unit -> bool
 val sys_enable_zicboz = pure "sys_enable_zicboz" : unit -> bool
 
-
 // maskmax6 value for Sdtrig
-// val sys_maskmax6 = "sys_maskmax6" : unit -> range(0, 63)
-function sys_maskmax6() -> range(0, 63) = 63
+val sys_maskmax6 = pure "sys_maskmax6" : unit -> range(0, 63)
 
 function legalize_misa(m : Misa, v : xlenbits) -> Misa = {
   let  v = Mk_Misa(v);
@@ -241,23 +199,26 @@ function legalize_misa(m : Misa, v : xlenbits) -> Misa = {
   }
 }
 
+mapping clause csr_name_map = 0x301  <-> "misa"
+function clause is_CSR_defined(0x301) = true // misa
+function clause read_CSR(0x301, _) = misa.bits
+function clause write_CSR(0x301, value) = { misa = legalize_misa(misa, value); misa.bits }
+
+// Are user and supervisor mode supported by the hardware?
+// TODO: Don't hard-code these.
+function sys_enable_user() -> bool = true
+function sys_enable_supervisor() -> bool = true
+
+// Are supervisor/user mode currently enabled? Although
+// unlikely and not currently supported by the model,
+// you are technically allowed to have writable misa[U/S].
+function clause extensionEnabled(Ext_U) = misa[U] == 0b1
+function clause extensionEnabled(Ext_S) = misa[S] == 0b1
 // Note the model doesn't support hypervisor mode yet.
-enum clause extension = Ext_H
 function clause extensionEnabled(Ext_H) = misa[H] == 0b1
 
-enum clause extension = Ext_U
-function clause extensionEnabled(Ext_U) = misa[U] == 0b1
-
-enum clause extension = Ext_S
-function clause extensionEnabled(Ext_S) = misa[S] == 0b1
-
 // Svnapot depends on Sv39.
-enum clause extension = Ext_Svnapot
 function clause extensionEnabled(Ext_Svnapot) = sys_enable_svnapot() & sys_enable_sv39()
-
-/* Hardware Performance Monitoring counters */
-enum clause extension = Ext_Zihpm
-function clause extensionEnabled(Ext_Zihpm) = true
 
 /*
  * Illegal values legalized to least privileged mode supported.
@@ -274,96 +235,33 @@ function have_privLevel(priv : priv_level) -> bool =
     0b11 => true,
   }
 
-bitfield Mstatush : bits(32) = {
-  MBE  : 5,
-  SBE  : 4
+register mstatus : Mstatus = {
+  // Initialise SXL and UXL.
+  let mxl = architecture(if xlen == 32 then RV32 else RV64);
+  [ Mk_Mstatus(zeros()) with
+    // These fields do not exist on RV32 and are read-only zero
+    // if the corresponding mode is not supported.
+    SXL = if xlen != 32 & sys_enable_supervisor() then mxl else zeros(),
+    UXL = if xlen != 32 & sys_enable_user() then mxl else zeros(),
+  ]
 }
-register mstatush : Mstatush
 
-bitfield Mstatus : xlenbits = {
-  SD   : xlen - 1,
-
-  // The MBE and SBE fields are in mstatus in RV64 and absent in RV32.
-  // On RV32, they are in mstatush, which doesn't exist in RV64.  For now,
-  // they are handled in an ad-hoc way.
-  // MBE  : 37
-  // SBE  : 36
-
-  // The SXL and UXL fields don't exist on RV32, so they are modelled
-  // via explicit getters and setters; see below.
-  // SXL  : 35 .. 34,
-  // UXL  : 33 .. 32,
-
-  TSR  : 22,
-  TW   : 21,
-  TVM  : 20,
-  MXR  : 19,
-  SUM  : 18,
-  MPRV : 17,
-
-  XS   : 16 .. 15,
-  FS   : 14 .. 13,
-
-  MPP  : 12 .. 11,
-  VS   : 10 .. 9,
-  SPP  : 8,
-
-  MPIE : 7,
-  SPIE : 5,
-
-  MIE  : 3,
-  SIE  : 1,
-}
-register mstatus : Mstatus
-
-val ignore_mprv_in_debug : unit -> bool // TODO: this is a redundant forward declaration.
-                                        // Body is in riscv_sdext_regs.sail for now.
-                                        // Needs to be reordered.
 
 function effectivePrivilege(t : AccessType(ext_access_type), m : Mstatus, priv : Privilege) -> Privilege =
-  if   t != Execute() & m[MPRV] == 0b1 & not(ignore_mprv_in_debug())
+  if   t != Execute() & m[MPRV] == 0b1
   then privLevel_of_bits(m[MPP])
   else priv
 
-// This is used by CLIC's weird CSRs. Returns true if the current privilege
-// mode is the same as the previous privilege mode (before a the last trap).
-// In other words if you call this in a trap handler, it checks if we have
-// just taken a horizontal interrupt.
-function currentPrivilegeMatchesPrevious() -> bool =
-  match cur_privilege() {
-    Machine => mstatus[MPP] == 0b11,
-    Supervisor => mstatus[SPP] == 0b1,
-    User => true,
-  }
-
 function get_mstatus_SXL(m : Mstatus) -> arch_xlen = {
   if   xlen == 32
-  then arch_to_bits(RV32)
-  else m.bits[35 .. 34]
-}
-
-function set_mstatus_SXL(m : Mstatus, a : arch_xlen) -> Mstatus = {
-  if   xlen == 32
-  then m
-  else {
-    let m = vector_update_subrange(m.bits, 35, 34,  a);
-    Mk_Mstatus(m)
-  }
+  then architecture(RV32)
+  else m[SXL]
 }
 
 function get_mstatus_UXL(m : Mstatus) -> arch_xlen = {
   if   xlen == 32
-  then arch_to_bits(RV32)
-  else m.bits[33 .. 32]
-}
-
-function set_mstatus_UXL(m : Mstatus, a : arch_xlen) -> Mstatus = {
-  if   xlen == 32
-  then m
-  else {
-    let m = vector_update_subrange(m.bits, 33, 32,  a);
-    Mk_Mstatus(m)
-  }
+  then architecture(RV32)
+  else m[UXL]
 }
 
 // "xPP fields are WARL fields that can hold only privilege mode x and any
@@ -377,89 +275,159 @@ function legalize_mpp(mpp : bits(2)) -> bits(2) =
 function legalize_spp(spp : bits(1)) -> bits(1) =
   if extensionEnabled(Ext_S) then spp else 0b0
 
-function legalize_mstatus(o : Mstatus, v : xlenbits) -> Mstatus = {
+function legalize_mstatus(o : Mstatus, v : bits(64)) -> Mstatus = {
   /*
    * Populate all defined fields using the bits of v, stripping anything
-   * that does not have a matching bitfield entry. All bits above 32 are handled
-   * explicitly later.
+   * that does not have a matching bitfield entry. The SD bits are handled
+   * explicitly later depending on xlen.
    */
-  let m : Mstatus = Mk_Mstatus(zero_extend(v[22 .. 7] @ 0b0 @ v[5 .. 3] @ 0b0 @ v[1 .. 0]));
+  let v = Mk_Mstatus(v);
 
-  /* Legalize MPP */
-  let m = [m with
-    MPP = legalize_mpp(m[MPP]),
-    SPP = legalize_spp(m[SPP]),
-  ];
-
-  /* We don't have any extension context yet. */
-  let m = [m with XS = extStatus_to_bits(Off)];
-
+  let o = [o with
+    // MDT = v[MDT],
+    // MPELP = v[MPELP],
+    // MPV = v[MPV],
+    // GVA = v[GVA],
+    /* We don't currently support changing MBE and SBE. */
+    // MBE = v[MBE],
+    // SBE = v[SBE],
+    /* We don't support dynamic changes to SXL and UXL. */
+    // SXL = if xlen == 64 then v[SXL] else o[SXL],
+    // UXL = if xlen == 64 then v[UXL] else o[UXL],
+    // SDT = v[SDT],
+    // SPELP = v[SPELP],
+    TSR = v[TSR],
+    TW = v[TW],
+    TVM = v[TVM],
+    MXR = v[MXR],
+    SUM = v[SUM],
+    MPRV = if extensionEnabled(Ext_U) then v[MPRV] else 0b0,
+    /* We don't have any extension context yet. */
+    XS = extStatus_to_bits(Off),
   /* FS is WARL, and making FS writable can support the M-mode emulation of an FPU
    * to support code running in S/U-modes.  Spike does this, and for now, we match it,
    * but only if Zfinx isn't enabled.
    * FIXME: This should be made a platform parameter.
    */
-  let m = if sys_enable_zfinx() then [m with FS = extStatus_to_bits(Off)] else m;
-  let dirty = extStatus_of_bits(m[FS]) == Dirty | extStatus_of_bits(m[XS]) == Dirty |
-              extStatus_of_bits(m[VS]) == Dirty;
-  let m = [m with SD = bool_to_bits(dirty)];
+    FS = if sys_enable_zfinx() then extStatus_to_bits(Off) else v[FS],
+    MPP = legalize_mpp(v[MPP]),
+    SPP = legalize_spp(v[SPP]),
+    VS = v[VS],
+    MPIE = v[MPIE],
+    SPIE = v[SPIE],
+    MIE = v[MIE],
+    SIE = v[SIE],
+  ];
 
-  /* We don't support dynamic changes to SXL and UXL. */
-  let m = set_mstatus_SXL(m, get_mstatus_SXL(o));
-  let m = set_mstatus_UXL(m, get_mstatus_UXL(o));
+  // Set dirty bit to OR of other status bits.
+  let dirty = extStatus_of_bits(o[FS]) == Dirty |
+              extStatus_of_bits(o[XS]) == Dirty |
+              extStatus_of_bits(o[VS]) == Dirty;
 
-  /* We don't currently support changing MBE and SBE. */
-  let m = if xlen == 64 then {
-             Mk_Mstatus([m.bits with 37 .. 36 = 0b00])
-          } else m;
+  let o = [o with SD = bool_to_bits(dirty)];
 
-  if not(extensionEnabled(Ext_U)) then {
-    let m = [m with MPRV = 0b0];
-    m
-  } else m
+  ext_legalize_mstatus(o, v)
 }
+
+mapping clause csr_name_map = 0x300  <-> "mstatus"
+
+function clause is_CSR_defined(0x300) = true // mstatus
+function clause is_CSR_defined(0x310) = xlen == 32 // mstatush
+
+function clause read_CSR(0x300, _) = mstatus.bits[xlen - 1 .. 0]
+function clause read_CSR((0x310, _) if xlen == 32) = mstatus.bits[63 .. 32]
+
+function clause write_CSR((0x300, value) if xlen == 64) = { mstatus = legalize_mstatus(mstatus, value); mstatus.bits }
+function clause write_CSR((0x300, value) if xlen == 32) = { mstatus = legalize_mstatus(mstatus, mstatus.bits[63 .. 32] @ value); mstatus.bits[31 .. 0] }
+function clause write_CSR((0x310, value) if xlen == 32) = { mstatus = legalize_mstatus(mstatus, value @ mstatus.bits[31 .. 0]); mstatus.bits[63 .. 32] }
 
 /* architecture and extension checks */
 
-function cur_Architecture() -> Architecture = {
+function cur_architecture() -> Architecture = {
   let a : arch_xlen =
-    match (cur_privilege()) {
+    match cur_privilege() {
       Machine    => misa[MXL],
       Supervisor => get_mstatus_SXL(mstatus),
       User       => get_mstatus_UXL(mstatus)
     };
-  match architecture(a) {
-    Some(a) => a,
-    None()  => internal_error(__FILE__, __LINE__, "Invalid current architecture")
-  }
+  architecture(a)
 }
 
 function in32BitMode() -> bool = {
-  cur_Architecture() == RV32
+  cur_architecture() == RV32
+}
+
+/* mseccfg */
+register mseccfg : Seccfg = legalize_mseccfg(Mk_Seccfg(zeros()), zeros())
+
+mapping clause csr_name_map = 0x747  <-> "mseccfg"
+mapping clause csr_name_map = 0x757  <-> "mseccfgh"
+
+function clause is_CSR_defined(0x747) = true // mseccfg
+function clause is_CSR_defined(0x757) = xlen == 32 // mseccfgh
+
+function clause read_CSR(0x747, _) = mseccfg.bits[xlen - 1 .. 0]
+function clause read_CSR((0x757, _) if xlen == 32) = mseccfg.bits[63 .. 32]
+
+val set_mseccfg : (bits(64)) -> unit
+
+function clause write_CSR((0x747, value) if xlen == 32) = { set_mseccfg(mseccfg.bits[63 .. 32] @ value); mseccfg.bits[31 .. 0] }
+function clause write_CSR((0x747, value) if xlen == 64) = { set_mseccfg(value); mseccfg.bits }
+function clause write_CSR((0x757, value) if xlen == 32) = { set_mseccfg(value @ mseccfg.bits[31 .. 0]); mseccfg.bits[63 .. 32] }
+
+// Initialised to legal values in case some bits are hard-coded to 1.
+register menvcfg : MEnvcfg = legalize_menvcfg(Mk_MEnvcfg(zeros()), mseccfg, zeros())
+register senvcfg : SEnvcfg = legalize_senvcfg(Mk_SEnvcfg(zeros()), menvcfg, zeros())
+
+mapping clause csr_name_map = 0x30A  <-> "menvcfg"
+mapping clause csr_name_map = 0x31A  <-> "menvcfgh"
+mapping clause csr_name_map = 0x10A  <-> "senvcfg"
+
+function clause is_CSR_defined(0x30A) = extensionEnabled(Ext_U) // menvcfg
+function clause is_CSR_defined(0x31A) = extensionEnabled(Ext_U) & (xlen == 32) // menvcfgh
+function clause is_CSR_defined(0x10A) = extensionEnabled(Ext_S) // senvcfg
+
+function clause read_CSR(0x30A, _) = menvcfg.bits[xlen - 1 .. 0]
+function clause read_CSR((0x31A, _) if xlen == 32) = menvcfg.bits[63 .. 32]
+function clause read_CSR(0x10A, _) = senvcfg.bits[xlen - 1 .. 0]
+
+val set_menvcfg : (bits(64)) -> unit
+val set_senvcfg : (xlenbits) -> unit
+
+function clause write_CSR((0x30A, value) if xlen == 32) = { set_menvcfg(menvcfg.bits[63 .. 32] @ value); menvcfg.bits[31 .. 0] }
+function clause write_CSR((0x30A, value) if xlen == 64) = { set_menvcfg(value); menvcfg.bits }
+function clause write_CSR((0x31A, value) if xlen == 32) = { set_menvcfg(value @ menvcfg.bits[31 .. 0]); menvcfg.bits[63 .. 32] }
+function clause write_CSR(0x10A, value) = { set_senvcfg(value); senvcfg.bits }
+
+// Return whether or not FIOM is currently active, based on the current
+// privilege and the menvcfg/senvcfg settings. This means that I/O fences
+// imply memory fence.
+function is_fiom_active() -> bool = {
+  match cur_privilege() {
+    Machine => false,
+    Supervisor => menvcfg[FIOM] == 0b1,
+    User => (menvcfg[FIOM] | senvcfg[FIOM]) == 0b1,
+  }
 }
 
 /* interrupt processing state */
 
 bitfield Minterrupts : xlenbits = {
-  MEI : 11, /* external interrupts */
+  // Local Counter OverFlow Interrupt
+  LCOFI : 13,
+
+  // Machine/Supervisor External Interrupt
+  MEI : 11,
   SEI : 9,
 
-  MTI : 7,  /* timers interrupts */
+  // Machine/Supervisor Timer Interrupt
+  MTI : 7,
   STI : 5,
 
-  MSI : 3,  /* software interrupts */
+  // Machine/Supervisor Software Interrupt
+  MSI : 3,
   SSI : 1,
 }
-register mip     : Minterrupts /* Pending */
-register mie     : Minterrupts /* Enabled */
-register mideleg : Minterrupts /* Delegation to S-mode */
-
-/* mseccfg */
-register mseccfg : Seccfg = legalize_mseccfg(Mk_Seccfg(zeros()), zeros())
-
-// Initialised to legal values in case some bits are hard-coded to 1.
-register menvcfg : MEnvcfg = legalize_menvcfg(Mk_MEnvcfg(zeros()), mseccfg, zeros())
-register senvcfg : SEnvcfg = legalize_senvcfg(Mk_SEnvcfg(zeros()), menvcfg, zeros())
 
 // Non Maskable Interrupt. If this is set an NMI is taken.
 register nmi_taken : bool
@@ -468,16 +436,18 @@ register nmi_cause : exc_code
 // NMI is pending. Sets dcsr.nmip
 register nmi_pending : bool
 
-function legalize_mip(o : Minterrupts, v : xlenbits) -> Minterrupts = {
-  /* The only writable bits are the S-mode bits, and with the 'N'
-   * extension, the U-mode bits. */
-  let v = Mk_Minterrupts(v);
+val sys_writable_stip = pure "sys_writable_stip" : unit -> bool
 
+function legalize_mip(o : Minterrupts, v : xlenbits) -> Minterrupts = {
+  // MEI, MTI and MSI are read-only in mip.
+  let v = Mk_Minterrupts(v);
   [o with
-    SEI = v[SEI],
-    SSI = v[SSI],
-    // STI is read only if Sstc is enabled and STCE is set (it is equal to stimecmp <= mtime).
-    STI = if extensionEnabled(Ext_Sstc) & menvcfg[STCE] == 0b1 then o[STI] else v[STI],
+    SEI = if extensionEnabled(Ext_S) then v[SEI] else 0b0,
+    STI = if extensionEnabled(Ext_S) then (
+      if not(sys_writable_stip()) | extensionEnabled(Ext_Sstc) & menvcfg[STCE] == 0b1 then o[STI] else v[STI]
+    ) else 0b0,
+    SSI = if extensionEnabled(Ext_S) then v[SSI] else 0b0,
+    LCOFI = if extensionEnabled(Ext_Sscofpmf) then v[LCOFI] else 0b0,
   ]
 }
 
@@ -487,9 +457,10 @@ function legalize_mie(o : Minterrupts, v : xlenbits) -> Minterrupts = {
     MEI = v[MEI],
     MTI = v[MTI],
     MSI = v[MSI],
-    SEI = v[SEI],
-    STI = v[STI],
-    SSI = v[SSI]
+    SEI = if extensionEnabled(Ext_S) then v[SEI] else 0b0,
+    STI = if extensionEnabled(Ext_S) then v[STI] else 0b0,
+    SSI = if extensionEnabled(Ext_S) then v[SSI] else 0b0,
+    LCOFI = if extensionEnabled(Ext_Sscofpmf) then v[LCOFI] else 0b0,
   ]
 }
 
@@ -499,7 +470,7 @@ function legalize_mideleg(o : Minterrupts, v : xlenbits) -> Minterrupts = {
 
 /* exception processing state */
 
-bitfield Medeleg : xlenbits = {
+bitfield Medeleg : bits(64) = {
   SAMO_Page_Fault   : 15,
   Load_Page_Fault   : 13,
   Fetch_Page_Fault  : 12,
@@ -515,76 +486,65 @@ bitfield Medeleg : xlenbits = {
   Fetch_Access_Fault: 1,
   Fetch_Addr_Align  : 0
 }
-register medeleg : Medeleg  /* Delegation to S-mode */
 
-function legalize_medeleg(o : Medeleg, v : xlenbits) -> Medeleg = {
-  let m = Mk_Medeleg(v & sys_medeleg_writable_bits()[xlen - 1 .. 0]);
+function legalize_medeleg(o : Medeleg, v : bits(64)) -> Medeleg = {
+  let m = Mk_Medeleg(v & sys_medeleg_writable_bits());
 
   /* M-EnvCalls delegation is not supported */
   [m with MEnvCall = 0b0]
 }
 
+register mie     : Minterrupts /* Enabled */
+register mip     : Minterrupts /* Pending */
+register medeleg : Medeleg     /* Exception delegation to S-mode */
+register mideleg : Minterrupts /* Interrupt delegation to S-mode */
+
+mapping clause csr_name_map = 0x304  <-> "mie"
+mapping clause csr_name_map = 0x344  <-> "mip"
+mapping clause csr_name_map = 0x302  <-> "medeleg"
+mapping clause csr_name_map = 0x312  <-> "medelegh"
+mapping clause csr_name_map = 0x303  <-> "mideleg"
+
+function clause is_CSR_defined(0x304) = true // mie
+function clause is_CSR_defined(0x344) = true // mip
+function clause is_CSR_defined(0x302) = extensionEnabled(Ext_S) // medeleg
+function clause is_CSR_defined(0x312) = extensionEnabled(Ext_S) & xlen == 32 // medelegh
+function clause is_CSR_defined(0x303) = extensionEnabled(Ext_S) // mideleg
+
+function clause read_CSR(0x304, _) = mie.bits
+function clause read_CSR(0x344, _) = mip.bits
+function clause read_CSR(0x302, _) = medeleg.bits[xlen - 1 .. 0]
+function clause read_CSR((0x312, _) if xlen == 32) = medeleg.bits[63 .. 32]
+function clause read_CSR(0x303, _) = mideleg.bits
+
+function clause write_CSR(0x304, value) = { mie = legalize_mie(mie, value); mie.bits }
+function clause write_CSR(0x344, value) = { mip = legalize_mip(mip, value); mip.bits }
+function clause write_CSR((0x302, value) if xlen == 64) = { medeleg = legalize_medeleg(medeleg, value); medeleg.bits }
+function clause write_CSR((0x302, value) if xlen == 32) = { medeleg = legalize_medeleg(medeleg, medeleg.bits[63 .. 32] @ value); medeleg.bits[31 .. 0] }
+function clause write_CSR((0x312, value) if xlen == 32) = { medeleg = legalize_medeleg(medeleg, value @ medeleg.bits[31 .. 0]); medeleg.bits[63 .. 32] }
+function clause write_CSR(0x303, value) = { mideleg = legalize_mideleg(mideleg, value); mideleg.bits }
+
 /* registers for trap handling */
 
 bitfield Mtvec : xlenbits = {
-  Base    : xlen - 1 .. 2,
-  // This field overlaps with Base and is used for CLIC.
-  Submode : 5 .. 2,
-  Mode    : 1 .. 0,
+  Base : xlen - 1 .. 2,
+  Mode : 1 .. 0
 }
 register mtvec : Mtvec  /* Trap Vector */
 
 function legalize_tvec(o : Mtvec, v : xlenbits) -> Mtvec = {
-  let mask = sys_xtvec_writable_bits()[xlen - 1 .. 0];
-  let v = Mk_Mtvec((v & mask) | (o.bits & ~(mask)));
-  match trapVectorMode_bits(v[Mode]) {
-    TV_Direct => v,
-    TV_Vector => v,
-    TV_Smclic if extensionEnabled(Ext_Smclic) & v[Submode] == zeros() => v,
-    // Reserved behaviour is implementation specific.
-    _ => if extensionEnabled(Ext_Smclic)
-         then [v with Mode = o[Mode], Submode = o[Submode]]
-         else [v with Mode = o[Mode]],
-  }
+ let v = Mk_Mtvec(v);
+ match trapVectorMode_bits(v[Mode]) {
+   TV_Direct => v,
+   TV_Vector => v,
+   _         => [v with Mode = o[Mode]]
+ }
 }
-
-function inSmclicMode() -> bool =
-  extensionEnabled(Ext_Smclic) & trapVectorMode_bits(mtvec[Mode]) == TV_Smclic & mtvec[Submode] == zeros()
-
-// In CLIC mode, xtvec.mode and xtvec.submode in lower privilege modes are
-// writeable but appear to be 11 and 0000 respectively when read or implicitly
-// read in that mode.
-
-// In CLINT mode, both bits of xtvec.mode are writeable in lower-privilege modes
-// but xtvec.mode bit 1 appears to be 0 when read or implicitly read in that mode.
-function read_stvec_utvec(xtvec : xlenbits) -> xlenbits =
-  if inSmclicMode()
-  then [xtvec with 5 .. 0 = 0b000011]
-  else if extensionEnabled(Ext_Smclic)
-  then [xtvec with 1 = bitzero]
-  else xtvec
-
 
 bitfield Mcause : xlenbits = {
   IsInterrupt : xlen - 1,
   Cause       : xlen - 2 .. 0,
-
-  // CLIC-only fields.
-
-  // Mirrors of xstatus.xpp/xpie. No state associated with this here.
-  ClicXstatusXpp  : 29 .. 28,
-  ClicXstatusXpie : 27,
-
-  // There's a unique value for each mcause, scause for these bits.
-  // All other fields are shared between all of them (or mirros of xstatus).
-  // The values for mcause and scause are stored in separate variables.
-  Xinhv           : 30,
-  Xpil            : 23 .. 16,
-
-  // CLIC only allows 12-bit execution code.
-  ClicExcCode     : 11 .. 0,
 }
-
 register mcause : Mcause
 register scause : Mcause
 
@@ -597,79 +557,26 @@ function legalize_cause(v : xlenbits) -> Mcause = {
                   else zero_extend(m[Cause][cause_bits - 1 .. 0])]
 }
 
-
-function get_xcause(priv : Privilege) -> Mcause = {
-  if inSmclicMode() then {
-    match priv {
-      // The Xpp/Xpie fields mirror mstatus, so copy them into the result.
-      // This means any code that reads these fields MUST use get_xcause.
-      // If you only read other fields then it's ok to access xcause directly.
-      Machine => [
-        mcause with
-        ClicXstatusXpp = mstatus[MPP],
-        ClicXstatusXpie = mstatus[MPIE],
-      ],
-      Supervisor => [
-        scause with
-        ClicXstatusXpp = zero_extend(mstatus[SPP]),
-        ClicXstatusXpie = mstatus[SPIE],
-      ],
-      User => internal_error(__FILE__, __LINE__, "N extension not supported"),
-    }
-  } else {
-    match priv {
-      Machine => mcause,
-      Supervisor => scause,
-      User => internal_error(__FILE__, __LINE__, "N extension not supported"),
-    }
+function get_xcause(priv : Privilege) -> Mcause =
+  match priv {
+    Machine => mcause,
+    Supervisor => scause,
+    User => internal_error(__FILE__, __LINE__, "N extension not supported"),
   }
-}
 
 function set_xcause(priv : Privilege, value : xlenbits) -> unit = {
-  if inSmclicMode() then {
-    let cause = Mk_Mcause(value);
-    // Zero reserved fields. This is implementation defined behaviour.
-    let cause = [Mk_Mcause(zeros()) with
-      IsInterrupt = cause[IsInterrupt],
-      ClicXstatusXpp = cause[ClicXstatusXpp],
-      ClicXstatusXpie = cause[ClicXstatusXpie],
-      Xinhv = cause[Xinhv],
-      Xpil = cause[Xpil],
-      ClicExcCode = cause[ClicExcCode],
-    ];
-
-    // Legalise Xpp.
-    let cause = [cause with ClicXstatusXpp = match priv {
-      Machine => legalize_mpp(cause[ClicXstatusXpp]),
-      Supervisor => 0b0 @ legalize_spp(cause[ClicXstatusXpp][0..0]),
-      User => internal_error(__FILE__, __LINE__, "N extension not supported"),
-    }];
-
-    match priv {
-      Machine => {
-        mcause = cause;
-        // These fields are actually mirrors of mstatus, so update them in
-        // mstatus.
-        mstatus[MPP] = cause[ClicXstatusXpp];
-        mstatus[MPIE] = cause[ClicXstatusXpie];
-      },
-      Supervisor => {
-        scause = cause;
-        // MPP is 2 bits but SPP is only 1 bit.
-        mstatus[SPP] = cause[ClicXstatusXpp][0..0];
-        mstatus[SPIE] = cause[ClicXstatusXpie];
-      },
-      User => internal_error(__FILE__, __LINE__, "N extension not supported"),
-    }
-  } else {
-    let cause = legalize_cause(value);
-    match priv {
-      Machine => mcause = cause,
-      Supervisor => scause = cause,
-      User => internal_error(__FILE__, __LINE__, "N extension not supported"),
-    }
+  let cause = legalize_cause(value);
+  match priv {
+    Machine => mcause = cause,
+    Supervisor => scause = cause,
+    User => internal_error(__FILE__, __LINE__, "N extension not supported"),
   }
 }
+
+mapping clause csr_name_map = 0x342  <-> "mcause"
+function clause is_CSR_defined(0x342) = true // mcause
+function clause read_CSR(0x342, _) = get_xcause(Machine).bits
+function clause write_CSR(0x342, value) = { set_xcause(Machine, value); get_xcause(Machine).bits }
 
 /* Interpreting the trap-vector address */
 function tvec_addr(m : Mtvec, c : Mcause) -> option(xlenbits) = {
@@ -679,8 +586,16 @@ function tvec_addr(m : Mtvec, c : Mcause) -> option(xlenbits) = {
     TV_Vector => if   c[IsInterrupt] == 0b1
                  then Some(base + (zero_extend(c[Cause]) << 2))
                  else Some(base),
-    TV_Smclic => if inSmclicMode() then Some(base) else None(),
     TV_Reserved => None(),
+  }
+}
+
+/* Get base address of xtvec with all mode bits zeroed */
+function tvec_base_addr(m : Mtvec) -> xlenbits = {
+  match trapVectorMode_bits(m[Mode]) {
+    TV_Direct => [m with Mode = zeros()].bits,
+    TV_Vector => [m with Mode = zeros()].bits,
+    TV_Reserved => internal_error(__FILE__, __LINE__, "Invalid xtvec mode"),
   }
 }
 
@@ -711,6 +626,21 @@ function align_pc(addr : xlenbits) -> xlenbits = {
 register mtval    : xlenbits
 register mscratch : xlenbits
 
+mapping clause csr_name_map = 0x343  <-> "mtval"
+mapping clause csr_name_map = 0x340  <-> "mscratch"
+
+function clause is_CSR_defined(0x343) = true // mtval
+function clause is_CSR_defined(0x340) = true // mscratch
+
+val get_mscratch : (unit) -> xlenbits
+val set_mscratch : (xlenbits) -> unit
+
+function clause read_CSR(0x343, _) = mtval
+function clause read_CSR(0x340, _) = get_mscratch()
+
+function clause write_CSR(0x343, value) = { mtval = convertInvalidAddr(value); mtval }
+function clause write_CSR(0x340, value) = { set_mscratch(value); get_mscratch() }
+
 /* counters */
 
 bitfield Counteren : bits(32) = {
@@ -720,24 +650,37 @@ bitfield Counteren : bits(32) = {
   CY   : 0
 }
 
-register mcounteren : Counteren
-register scounteren : Counteren
-
-function legalize_mcounteren(c : Counteren, v : xlenbits) -> Counteren = {
-  let supported_counters = sys_writable_hpm_counters()[31 .. 3] @ 0b111;
-  Mk_Counteren(v[31 .. 0] & supported_counters)
-}
-
+// scounteren
 function legalize_scounteren(c : Counteren, v : xlenbits) -> Counteren = {
   let supported_counters = sys_writable_hpm_counters()[31 .. 3] @ 0b111;
   Mk_Counteren(v[31 .. 0] & supported_counters)
 }
 
+register scounteren : Counteren
+mapping clause csr_name_map = 0x106  <-> "scounteren"
+function clause is_CSR_defined(0x106) = extensionEnabled(Ext_S) // scounteren
+function clause read_CSR(0x106, _) = zero_extend(scounteren.bits)
+function clause write_CSR(0x106, value) = { scounteren = legalize_scounteren(scounteren, value); zero_extend(scounteren.bits) }
+
+// mcounteren
+function legalize_mcounteren(c : Counteren, v : xlenbits) -> Counteren = {
+  let supported_counters = sys_writable_hpm_counters()[31 .. 3] @ 0b111;
+  Mk_Counteren(v[31 .. 0] & supported_counters)
+}
+
+register mcounteren : Counteren
+mapping clause csr_name_map = 0x306  <-> "mcounteren"
+function clause is_CSR_defined(0x306) = extensionEnabled(Ext_U) // mcounteren
+function clause read_CSR(0x306, _) = zero_extend(mcounteren.bits)
+function clause write_CSR(0x306, value) = { mcounteren = legalize_mcounteren(mcounteren, value); zero_extend(mcounteren.bits) }
+
+// mcountinhibit
 bitfield Counterin : bits(32) = {
   HPM  : 31 .. 3,
   IR : 2,
   CY : 0
 }
+
 register mcountinhibit : Counterin
 
 function get_countinhibit() -> Counterin = Mk_Counterin(mcountinhibit.bits | sys_force_countinhibit_bits())
@@ -747,6 +690,11 @@ function legalize_mcountinhibit(c : Counterin, v : xlenbits) -> Counterin = {
   let supported_counters = sys_writable_hpm_counters()[31 .. 3] @ 0b101;
   Mk_Counterin(v[31 .. 0] & supported_counters)
 }
+
+mapping clause csr_name_map = 0x320  <-> "mcountinhibit"
+function clause is_CSR_defined(0x320) = true // mcountinhibit
+function clause read_CSR(0x320, _) = zero_extend(get_countinhibit().bits)
+function clause write_CSR(0x320, value) = { mcountinhibit = legalize_mcountinhibit(mcountinhibit, value); zero_extend(get_countinhibit().bits) }
 
 register mcycle : bits(64)
 register mtime : bits(64)
@@ -773,8 +721,8 @@ register minstret_increment : bool
 // If there's an explicit write to minstret(h) then it is stored here because
 // it needs to be applied *after* the implicit increment due to instruction
 // retirement.
-register minstret_write : option(bits(xlen))
-register minstreth_write : option(bits(32))
+register minstret_write : option(bits(xlen)) = None()
+register minstreth_write : option(bits(32)) = None()
 
 function update_minstret() -> unit = {
   // First increment minstret due to instruction retirement
@@ -794,86 +742,45 @@ function update_minstret() -> unit = {
   };
 }
 
-// HPM (Hardware Performance Monitoring) counters. The lowest three values are
-// not used but they are defined for simplicity.
-register mhpmcounter : vector(32, bits(64))
-
-// HPM events selector. These control what the HPM counters measure. The lowest
-// three values are not used but they are defined for simplicity.
-register mhpmevent : vector(32, xlenbits)
-
-// Valid HPM counter indices. The lowest three are used for mcycle, mtime and minstret.
-type hpmidx = range(3, 31)
-
-// Convert the lowest 5 bits of a CSR index to an hpmidx. Asserts if it is 0..2.
-function hpmidx_from_bits(b : bits(5)) -> hpmidx = {
-  let index = unsigned(b);
-  assert(index >= 3, "unreachable HPM index");
-  index
-}
-
-function legalize_hpmevent(v : xlenbits) -> xlenbits = {
-  v & sys_hpmevent_writable_bits()[xlen - 1 .. 0]
-}
-
-function read_mhpmcounter(index : hpmidx) -> xlenbits = mhpmcounter[index][(xlen - 1) .. 0]
-function read_mhpmcounterh(index : hpmidx) -> bits(32) = mhpmcounter[index][63 .. 32]
-function read_mhpmevent(index : hpmidx) -> xlenbits = mhpmevent[index]
-
-// Write the HPM CSRs. These return the new value of the CSR, for use in writeCSR.
-function write_mhpmcounter(index : hpmidx, value : xlenbits) -> unit =
-  if sys_writable_hpm_counters()[index] == bitone then mhpmcounter[index][(xlen - 1) .. 0] = value
-
-function write_mhpmcounterh(index : hpmidx, value : bits(32)) -> unit =
-  if sys_writable_hpm_counters()[index] == bitone then mhpmcounter[index][63 .. 32] = value
-
-function write_mhpmevent(index : hpmidx, value : xlenbits) -> unit =
-  if sys_writable_hpm_counters()[index] == bitone then mhpmevent[index] = legalize_hpmevent(value)
-
-/* informational registers */
-register mvendorid : bits(32)
-register mimpid : xlenbits
-register marchid : xlenbits
+/* machine information registers */
+register mvendorid : bits(32) = zeros()
+register mimpid : xlenbits = zeros()
+register marchid : xlenbits = zeros()
 /* TODO: this should be readonly, and always 0 for now */
-register mhartid : xlenbits
-register mconfigptr : xlenbits
+register mhartid : xlenbits = zeros()
+register mconfigptr : xlenbits = zeros()
+
+mapping clause csr_name_map = 0xF11  <-> "mvendorid"
+mapping clause csr_name_map = 0xF12  <-> "marchid"
+mapping clause csr_name_map = 0xF13  <-> "mimpid"
+mapping clause csr_name_map = 0xF14  <-> "mhartid"
+mapping clause csr_name_map = 0xF15  <-> "mconfigptr"
+
+function clause is_CSR_defined(0xf11) = true // mvendorid
+function clause is_CSR_defined(0xf12) = true // marchdid
+function clause is_CSR_defined(0xf13) = true // mimpid
+function clause is_CSR_defined(0xf14) = true // mhartid
+function clause is_CSR_defined(0xf15) = true // mconfigptr
+
+function clause read_CSR(0xF11, _) = zero_extend(mvendorid)
+function clause read_CSR(0xF12, _) = marchid
+function clause read_CSR(0xF13, _) = mimpid
+function clause read_CSR(0xF14, _) = mhartid
+function clause read_CSR(0xF15, _) = mconfigptr
 
 /* S-mode registers */
 
 /* sstatus reveals a subset of mstatus */
-bitfield Sstatus : xlenbits = {
-  SD   : xlen - 1,
-  // The UXL field does not exist on RV32, so we define an explicit
-  // getter and setter below.
-  // UXL  : 30 .. 29,
-  MXR  : 19,
-  SUM  : 18,
-  XS   : 16 .. 15,
-  FS   : 14 .. 13,
-  VS   : 10 .. 9,
-  SPP  : 8,
-  SPIE : 5,
-  SIE  : 1,
-}
 /* sstatus is a view of mstatus, so there is no register defined. */
-
-function get_sstatus_UXL(s : Sstatus) -> arch_xlen = {
-  let m = Mk_Mstatus(s.bits);
-  get_mstatus_UXL(m)
-}
-
-function set_sstatus_UXL(s : Sstatus, a : arch_xlen) -> Sstatus = {
-  let m = Mk_Mstatus(s.bits);
-  let m = set_mstatus_UXL(m, a);
-  Mk_Sstatus(m.bits)
-}
 
 function lower_mstatus(m : Mstatus) -> Sstatus = {
   let s = Mk_Sstatus(zeros());
-  let s = [s with SD = m[SD]];
-  let s = set_sstatus_UXL(s, get_mstatus_UXL(m));
 
-  [s with
+  let s = [s with
+    SD = m[SD],
+    UXL = m[UXL],
+    //SDT = m[SDT],
+    //SPELP = m[SPELP],
     MXR = m[MXR],
     SUM = m[SUM],
     XS = m[XS],
@@ -882,15 +789,20 @@ function lower_mstatus(m : Mstatus) -> Sstatus = {
     SPP = m[SPP],
     SPIE = m[SPIE],
     SIE = m[SIE],
-  ]
+  ];
+
+  ext_lower_mstatus(m, s)
 }
 
 function lift_sstatus(m : Mstatus, s : Sstatus) -> Mstatus = {
   let dirty = extStatus_of_bits(s[FS]) == Dirty | extStatus_of_bits(s[XS]) == Dirty |
               extStatus_of_bits(s[VS]) == Dirty;
 
-  [m with
+  let m = [m with
     SD = bool_to_bits(dirty),
+    UXL = s[UXL],
+    //SDT = s[SDT],
+    //SPELP = s[SPELP],
     MXR = s[MXR],
     SUM = s[SUM],
     XS = s[XS],
@@ -899,21 +811,23 @@ function lift_sstatus(m : Mstatus, s : Sstatus) -> Mstatus = {
     SPP = s[SPP],
     SPIE = s[SPIE],
     SIE = s[SIE],
-  ]
+  ];
+
+  ext_lift_sstatus(m, s)
 }
 
-function legalize_sstatus(m : Mstatus, v : xlenbits) -> Mstatus = {
+function legalize_sstatus(m : Mstatus, v : bits(64)) -> Mstatus = {
   legalize_mstatus(m, lift_sstatus(m, Mk_Sstatus(v)).bits)
 }
 
-function get_xstatus(priv : Privilege) -> xlenbits =
+function get_xstatus(priv : Privilege) -> bits(64) =
   match priv {
     Machine => mstatus.bits,
     Supervisor => lower_mstatus(mstatus).bits,
     User => internal_error(__FILE__, __LINE__, "N extension not supported"),
   }
 
-function set_xstatus(priv : Privilege, xstatus : xlenbits) -> unit = {
+function set_xstatus(priv : Privilege, xstatus : bits(64)) -> unit = {
   mstatus = match priv {
     Machine => legalize_mstatus(mstatus, xstatus),
     Supervisor => legalize_sstatus(mstatus, xstatus),
@@ -921,60 +835,76 @@ function set_xstatus(priv : Privilege, xstatus : xlenbits) -> unit = {
   };
 }
 
+mapping clause csr_name_map = 0x100  <-> "sstatus"
+function clause is_CSR_defined(0x100) = extensionEnabled(Ext_S) // sstatus
+function clause read_CSR(0x100, _) = lower_mstatus(mstatus).bits[xlen - 1 .. 0]
+function clause write_CSR(0x100, value) = { mstatus = legalize_sstatus(mstatus, zero_extend(value)); mstatus.bits[xlen - 1 .. 0] }
+
 
 bitfield Sinterrupts : xlenbits = {
-  SEI : 9,  /* external interrupts */
+  // Local Counter OverFlow Interrupt
+  LCOFI : 13,
 
-  STI : 5,  /* timers interrupts */
+  // Supervisor External Interrupt
+  SEI : 9,
 
-  SSI : 1,  /* software interrupts */
+  // Supervisor Timer Interrupt
+  STI : 5,
+
+  // Supervisor Software Interrupt
+  SSI : 1,
 }
 
+// sip
 /* Provides the sip read view of mip (m) as delegated by mideleg (d). */
 function lower_mip(m : Minterrupts, d : Minterrupts) -> Sinterrupts = {
-  let s : Sinterrupts = Mk_Sinterrupts(zeros());
-
-  [s with
+  [Mk_Sinterrupts(zeros()) with
     SEI = m[SEI] & d[SEI],
     STI = m[STI] & d[STI],
     SSI = m[SSI] & d[SSI],
+    LCOFI = m[LCOFI] & d[LCOFI],
   ]
 }
 
 /* Provides the sie read view of mie (m) as delegated by mideleg (d). */
 function lower_mie(m : Minterrupts, d : Minterrupts) -> Sinterrupts = {
-  let s : Sinterrupts = Mk_Sinterrupts(zeros());
-
-  [s with
+  [Mk_Sinterrupts(zeros()) with
     SEI = m[SEI] & d[SEI],
     STI = m[STI] & d[STI],
     SSI = m[SSI] & d[SSI],
+    LCOFI = m[LCOFI] & d[LCOFI],
   ]
 }
 
 /* Returns the new value of mip from the previous mip (o) and the written sip (s) as delegated by mideleg (d). */
 function lift_sip(o : Minterrupts, d : Minterrupts, s : Sinterrupts) -> Minterrupts = {
-  let m : Minterrupts = o;
-  let m = if d[SSI] == 0b1 then [m with SSI = s[SSI]] else m;
-  m
+  [o with
+    SSI = if d[SSI] == 0b1 then s[SSI] else o[SSI],
+    LCOFI = if d[LCOFI] == 0b1 then s[LCOFI] else o[LCOFI],
+  ]
 }
 
-function legalize_sip(m : Minterrupts, d : Minterrupts, v : xlenbits) -> Minterrupts = {
-  lift_sip(m, d, Mk_Sinterrupts(v))
-}
+mapping clause csr_name_map = 0x144  <-> "sip"
+function clause is_CSR_defined(0x144) = extensionEnabled(Ext_S) // sip
+function clause read_CSR(0x144, _) = lower_mip(mip, mideleg).bits
+function clause write_CSR(0x144, value) = { mip = lift_sip(mip, mideleg, Mk_Sinterrupts(value)); mip.bits }
 
+
+// sie
 /* Returns the new value of mie from the previous mie (o) and the written sie (s) as delegated by mideleg (d). */
 function lift_sie(o : Minterrupts, d : Minterrupts, s : Sinterrupts) -> Minterrupts = {
-  let m : Minterrupts = o;
-  let m = if d[SEI] == 0b1 then [m with SEI = s[SEI]] else m;
-  let m = if d[STI] == 0b1 then [m with STI = s[STI]] else m;
-  let m = if d[SSI] == 0b1 then [m with SSI = s[SSI]] else m;
-  m
+  [o with
+    SEI = if d[SEI] == 0b1 then s[SEI] else o[SEI],
+    STI = if d[STI] == 0b1 then s[STI] else o[STI],
+    SSI = if d[SSI] == 0b1 then s[SSI] else o[SSI],
+    LCOFI = if d[LCOFI] == 0b1 then s[LCOFI] else o[LCOFI],
+  ]
 }
 
-function legalize_sie(m : Minterrupts, d : Minterrupts, v : xlenbits) -> Minterrupts = {
-  lift_sie(m, d, Mk_Sinterrupts(v))
-}
+mapping clause csr_name_map = 0x104  <-> "sie"
+function clause is_CSR_defined(0x104) = extensionEnabled(Ext_S) // sie
+function clause read_CSR(0x104, _) = lower_mie(mie, mideleg).bits
+function clause write_CSR(0x104, value) = { mie = lift_sie(mie, mideleg, Mk_Sinterrupts(value)); mie.bits }
 
 
 /* other non-VM related supervisor state */
@@ -982,6 +912,25 @@ register stvec    : Mtvec
 register sscratch : xlenbits
 register sepc     : xlenbits
 register stval    : xlenbits
+
+mapping clause csr_name_map = 0x140  <-> "sscratch"
+mapping clause csr_name_map = 0x142  <-> "scause"
+mapping clause csr_name_map = 0x143  <-> "stval"
+
+function clause is_CSR_defined(0x140) = extensionEnabled(Ext_S) // sscratch
+function clause is_CSR_defined(0x142) = extensionEnabled(Ext_S) // scause
+function clause is_CSR_defined(0x143) = extensionEnabled(Ext_S) // stval
+
+val get_sscratch : (unit) -> xlenbits
+val set_sscratch : (xlenbits) -> unit
+
+function clause read_CSR(0x140, _) = get_sscratch()
+function clause read_CSR(0x142, _) = get_xcause(Supervisor).bits
+function clause read_CSR(0x143, _) = stval
+
+function clause write_CSR(0x140, value) = { set_sscratch(value); get_sscratch() }
+function clause write_CSR(0x142, value) = { set_xcause(Supervisor, value); get_xcause(Supervisor).bits }
+function clause write_CSR(0x143, value) = { stval = convertInvalidAddr(value); stval }
 
 /*
  * S-mode address translation and protection (satp) layout.
@@ -998,11 +947,11 @@ function legalize_satp64(a : Architecture, o : bits(64), v : bits(64)) -> bits(6
   let s = Mk_Satp64(v);
   let supported : bool = match satpMode_of_bits(a, s[Mode]) {
     None()      => false,
-    Some(Sbare) => true,
+    Some(Bare)  => true,
     Some(Sv32)  => false, // Sv32 is not legal on RV64.
     Some(Sv39)  => sys_enable_sv39(),
     Some(Sv48)  => sys_enable_sv48(),
-    Some(Sv57)  => sys_enable_sv57() & false, // TODO: Sv57 not implemented in the model yet.
+    Some(Sv57)  => sys_enable_sv57(),
   };
 
   let s = [
@@ -1013,7 +962,10 @@ function legalize_satp64(a : Architecture, o : bits(64), v : bits(64)) -> bits(6
     PPN = zero_extend(s[PPN][sys_pa_bits() - pagesize_bits - 1 .. 0]),
   ];
 
-  s.bits
+  // Read-only zero if virtual addressing is not supported, even for Bare writes.
+  // (This is not required but is likely.)
+  let supported = supported & (sys_enable_sv39() | sys_enable_sv48() | sys_enable_sv57());
+  if supported then s.bits else o
 }
 
 bitfield Satp32 : bits(32) = {
@@ -1026,53 +978,59 @@ function legalize_satp32(a : Architecture, o : bits(32), v : bits(32)) -> bits(3
   let s = Mk_Satp32(v);
   let supported : bool = match satpMode_of_bits(a, 0b000 @ s[Mode]) {
     None()      => false,
-    Some(Sbare) => true,
+    Some(Bare)  => true,
     Some(Sv32)  => sys_enable_sv32(),
+    _           => internal_error(__FILE__, __LINE__, "Unreachable satp32 mode"),
   };
 
   // The extra `min()`s are to handle Sv32 on RV64, which is not really properly
   // supported by this model anyway.
 
+  assert(xlen == 32);
+
   let s = [
     s with
     // If full 16-bit ASID is not supported then the high bits will be read only zero.
-    Asid = zero_extend(s[Asid][min(9, sys_asid_bits()) - 1 .. 0]),
+    Asid = zero_extend(s[Asid][sys_asid_bits() - 1 .. 0]),
     // Bits above the physically addressable memory are read only zero.
-    PPN = zero_extend(s[PPN][min(34, sys_pa_bits()) - pagesize_bits - 1 .. 0]),
+    PPN = zero_extend(s[PPN][sys_pa_bits() - pagesize_bits - 1 .. 0]),
   ];
 
-  s.bits
+  // Read-only zero if virtual addressing is not supported, even for Bare writes.
+  // (This is not required but is likely.)
+  let supported = supported & sys_enable_sv32();
+  if supported then s.bits else o
+}
+
+function legalize_satp(
+  arch : Architecture,
+  prev_value : xlenbits,
+  written_value : xlenbits,
+) -> xlenbits = {
+  // TODO: This should actually switch on `arch` since satp is SXLEN not XLEN.
+  if xlen == 32 then {
+    legalize_satp32(arch, prev_value, written_value)
+  } else if xlen == 64 then {
+    legalize_satp64(arch, prev_value, written_value)
+  } else {
+    internal_error(__FILE__, __LINE__, "Unsupported xlen" ^ dec_str(xlen))
+  }
 }
 
 /* disabled trigger/debug module */
 register tselect : xlenbits
 
-/*
- * The seed CSR (entropy source)
- * ------------------------------------------------------------
- */
+mapping clause csr_name_map = 0x7a0  <-> "tselect"
+mapping clause csr_name_map = 0x7a1  <-> "tdata1"
+mapping clause csr_name_map = 0x7a2  <-> "tdata2"
+mapping clause csr_name_map = 0x7a3  <-> "tdata3"
 
-/* Valid return states for reading the seed CSR. */
-enum seed_opst = {
-  BIST, // Built-in-self-test. No randomness sampled.
-  ES16, // Entropy-sample-16. Valid 16-bits of randomness sampled.
-  WAIT, // Device still gathering entropy.
-  DEAD  // Fatal device compromise. No randomness sampled.
-}
-
-/* Mapping of status codes and their actual encodings. */
-mapping opst_code : seed_opst <-> bits(2) = {
-  BIST <-> 0b00,
-  WAIT <-> 0b01,
-  ES16 <-> 0b10,
-  DEAD <-> 0b11
-}
+function clause is_CSR_defined(0x7a0) = true
+function clause read_CSR(0x7a0, _) = ~(tselect)  /* this indicates we don't have any trigger support */
+function clause write_CSR(0x7a0, value) = { tselect = value; tselect }
 
 /*
  * Entropy Source - Platform access to random bits.
- * WARNING: This function currently lacks a proper side-effect annotation.
- *          If you are using theorem prover tool flows, you
- *          may need to modify or stub out this function for now.
  * NOTE: This would be better placed in riscv_platform.sail, but that file
  *       appears _after_ this one in the compile order meaning the valspec
  *       for this function is unavailable when it's first encountered in
@@ -1083,32 +1041,6 @@ val get_16_random_bits = impure {
     c: "plat_get_16_random_bits",
     lem: "plat_get_16_random_bits"
 } : unit -> bits(16)
-
-/* Entropy source spec requires an Illegal opcode exception be raised if the
- * seed register is read without also being written. This function is only
- * called once we know the CSR is being written, and all other access control
- * checks have been done.
- */
-function read_seed_csr() -> xlenbits = {
-  let reserved_bits : bits(6) = 0b000000;
-  let custom_bits : bits(8) = 0x00;
-  let seed : bits(16) = get_16_random_bits();
-  zero_extend(opst_code(ES16) @ reserved_bits @ custom_bits @ seed)
-}
-
-/* Writes to the seed CSR are ignored */
-function write_seed_csr () -> xlenbits = zeros()
-
-// Return whether or not FIOM is currently active, based on the current
-// privilege and the menvcfg/senvcfg settings. This means that I/O fences
-// imply memory fence.
-function is_fiom_active() -> bool = {
-  match cur_privilege() {
-    Machine => false,
-    Supervisor => menvcfg[FIOM] == 0b1,
-    User => (menvcfg[FIOM] | senvcfg[FIOM]) == 0b1,
-  }
-}
 
 /* vector csrs */
 register vstart : bits(16) /* use the largest possible length of vstart */
@@ -1195,6 +1127,3 @@ function get_vtype_vma() = decode_agtype(vtype[vma])
 
 val get_vtype_vta : unit -> agtype
 function get_vtype_vta() = decode_agtype(vtype[vta])
-
-/* Sstc : Supervisor Timer Register */
-register stimecmp : bits(64)

@@ -8,9 +8,6 @@
 
 /* Basic type and function definitions used pervasively in the model. */
 
-/* ISA extension names as enums */
-scattered enum extension
-
 // Function used to determine if an extension is enabled in the current configuration.
 // This means an extension is implemented & supported, *and* any necessary bits
 // are set in the relevant CSRs (misa, mstatus, etc.) to enable its use. It is possible
@@ -28,32 +25,38 @@ let xlen_max_unsigned = 2 ^ xlen - 1
 let xlen_max_signed = 2 ^ (xlen - 1) - 1
 let xlen_min_signed = 0 - 2 ^ (xlen - 1)
 
-type pagesize_bits : Int = 12
-let  pagesize_bits = sizeof(pagesize_bits)
-
 type half = bits(16)
 type word = bits(32)
 
+type pagesize_bits : Int = 12
+let  pagesize_bits = sizeof(pagesize_bits)
+
 /* register identifiers */
 
-type regidx  = bits(5)
-type cregidx = bits(3)    /* identifiers in RVC instructions */
-type csreg   = bits(12)   /* CSR addressing */
+newtype regidx = Regidx : bits(5)  /* uncompressed register identifiers */
+newtype cregidx = Cregidx : bits(3) /* identifiers in RVC instructions */
+type csreg = bits(12)  /* CSR addressing */
+
+function regidx_offset(Regidx(r) : regidx, o : bits(5)) -> regidx = Regidx(r + o)
+function regidx_bits (Regidx(b) : regidx) -> bits(5) = b
 
 /* register file indexing */
 
-type regno = range(0, 31)
+newtype regno = Regno : range(0, 31)
 
-function regidx_to_regno (b : regidx) -> regno = unsigned(b)
+function regidx_to_regno (Regidx(b) : regidx) -> regno = Regno(unsigned(b))
 
 /* mapping RVC register indices into normal indices */
 val creg2reg_idx : cregidx -> regidx
-function creg2reg_idx(creg) = 0b01 @ creg
+function creg2reg_idx(Cregidx(i)) = Regidx(0b01 @ i)
 
 /* some architecture and ABI relevant register identifiers */
-let zreg : regidx = 0b00000  /* x0, zero register  */
-let ra   : regidx = 0b00001  /* x1, return address */
-let sp   : regidx = 0b00010  /* x2, stack pointer  */
+let zreg : regidx = Regidx(0b00000) /* x0, zero register  */
+let ra   : regidx = Regidx(0b00001) /* x1, return address */
+let sp   : regidx = Regidx(0b00010) /* x2, stack pointer  */
+
+// Compressed zero reg.
+let czreg : cregidx = Cregidx(0b000)
 
 /* instruction fields */
 
@@ -66,20 +69,13 @@ type amo    = bits(1)  /* amo opcode flags */
 
 enum Architecture = {RV32, RV64, RV128}
 type arch_xlen = bits(2)
-function architecture(a : arch_xlen) -> option(Architecture) =
-  match (a) {
-    0b01 => Some(RV32),
-    0b10 => Some(RV64),
-    0b11 => Some(RV128),
-    _    => None()
-  }
 
-function arch_to_bits(a : Architecture) -> arch_xlen =
-  match (a) {
-    RV32  => 0b01,
-    RV64  => 0b10,
-    RV128 => 0b11
-  }
+mapping architecture : Architecture <-> arch_xlen = {
+  RV32  <-> 0b01,
+  RV64  <-> 0b10,
+  RV128 <-> 0b11,
+  backwards 0b00 => internal_error(__FILE__, __LINE__, "architecture(0b00) is invalid")
+}
 
 /* privilege levels */
 
@@ -119,51 +115,24 @@ function privLevel_to_str (p) =
 
 overload to_str = {privLevel_to_str}
 
-enum DebugModeTrigAction = {
-  DEBUG_TRIG_RAISE_BREAKPOINT_EXCEPTION,
-  DEBUG_TRIG_ENTER_DEBUG_MODE,
-  DEBUG_TRIG_TRACE_ON,
-  DEBUG_TRIG_TRACE_OFF,
-  DEBUG_TRIG_TRACE_NOTIFY,
-  DEBUG_TRIG_RESERVED_TRACE_SPECIFICATION,
-  DEBUG_TRIG_SEND_SIGNAL_EXTERNAL_TRIGGER_OUTPUT_0,
-  DEBUG_TRIG_SEND_SIGNAL_EXTERNAL_TRIGGER_OUTPUT_1
-}
+/* enum denoting whether an executed instruction retires */
 
-val debugModeTrigActionBits : DebugModeTrigAction <-> bits(6)
-mapping debugModeTrigActionBits = {
-    DEBUG_TRIG_RAISE_BREAKPOINT_EXCEPTION            <-> 0b000000,
-    DEBUG_TRIG_ENTER_DEBUG_MODE                      <-> 0b000001,
-    DEBUG_TRIG_TRACE_ON                              <-> 0b000010,
-    DEBUG_TRIG_TRACE_OFF                             <-> 0b000011,
-    DEBUG_TRIG_TRACE_NOTIFY                          <-> 0b000100,
-    DEBUG_TRIG_RESERVED_TRACE_SPECIFICATION          <-> 0b000101,
-    DEBUG_TRIG_SEND_SIGNAL_EXTERNAL_TRIGGER_OUTPUT_0 <-> 0b001000,
-    DEBUG_TRIG_SEND_SIGNAL_EXTERNAL_TRIGGER_OUTPUT_1 <-> 0b001001
-}
-
-struct Trigger_Reason = {
-  vaddr : xlenbits,
-  action : DebugModeTrigAction
-}
-
-/* union denoting whether/how an executed instruction retires */
-
-enum Retired = {
-  RETIRE_SUCCESS,
-  RETIRE_FAIL,
-  RETIRE_DEBUG_TRIGGER
-}
+enum Retired = {RETIRE_SUCCESS, RETIRE_FAIL}
 
 /* memory access types */
+enum CacheAccessType = {
+  CleanFlush,
+  Inval,
+  Zero
+}
 
 union AccessType ('a : Type) = {
-  Read      : 'a,
-  Write     : 'a,
-  ReadWrite : ('a, 'a),
-  Execute   : unit,
-  Cache     : 'a,
-  CacheInval: 'a
+  Read            : 'a,
+  Write           : 'a,
+  // (Read, Write)
+  ReadWrite       : ('a, 'a),
+  Execute         : unit,
+  Cache           : CacheAccessType,
 }
 
 enum word_width = { BYTE, HALF, WORD, DOUBLE}
@@ -179,21 +148,23 @@ enum InterruptType = {
   I_M_Timer,
   I_U_External,
   I_S_External,
-  I_M_External
+  I_M_External,
+  Local_Counter_Overflow,
 }
 
 val interruptType_to_bits : InterruptType -> exc_code
 function interruptType_to_bits (i) =
   match (i) {
-    I_U_Software => 0x000,
-    I_S_Software => 0x001,
-    I_M_Software => 0x003,
-    I_U_Timer    => 0x004,
-    I_S_Timer    => 0x005,
-    I_M_Timer    => 0x007,
-    I_U_External => 0x008,
-    I_S_External => 0x009,
-    I_M_External => 0x00b
+    I_U_Software => 0x00,
+    I_S_Software => 0x01,
+    I_M_Software => 0x03,
+    I_U_Timer    => 0x04,
+    I_S_Timer    => 0x05,
+    I_M_Timer    => 0x07,
+    I_U_External => 0x08,
+    I_S_External => 0x09,
+    I_M_External => 0x0b,
+    Local_Counter_Overflow => 0x0d,
   }
 
 /* architectural exception definitions */
@@ -223,22 +194,22 @@ union ExceptionType = {
 val exceptionType_to_bits : ExceptionType -> exc_code
 function exceptionType_to_bits(e) =
   match (e) {
-    E_Fetch_Addr_Align()   => 0x000,
-    E_Fetch_Access_Fault() => 0x001,
-    E_Illegal_Instr()      => 0x002,
-    E_Breakpoint()         => 0x003,
-    E_Load_Addr_Align()    => 0x004,
-    E_Load_Access_Fault()  => 0x005,
-    E_SAMO_Addr_Align()    => 0x006,
-    E_SAMO_Access_Fault()  => 0x007,
-    E_U_EnvCall()          => 0x008,
-    E_S_EnvCall()          => 0x009,
-    E_Reserved_10()        => 0x00a,
-    E_M_EnvCall()          => 0x00b,
-    E_Fetch_Page_Fault()   => 0x00c,
-    E_Load_Page_Fault()    => 0x00d,
-    E_Reserved_14()        => 0x00e,
-    E_SAMO_Page_Fault()    => 0x00f,
+    E_Fetch_Addr_Align()   => 0x00,
+    E_Fetch_Access_Fault() => 0x01,
+    E_Illegal_Instr()      => 0x02,
+    E_Breakpoint()         => 0x03,
+    E_Load_Addr_Align()    => 0x04,
+    E_Load_Access_Fault()  => 0x05,
+    E_SAMO_Addr_Align()    => 0x06,
+    E_SAMO_Access_Fault()  => 0x07,
+    E_U_EnvCall()          => 0x08,
+    E_S_EnvCall()          => 0x09,
+    E_Reserved_10()        => 0x0a,
+    E_M_EnvCall()          => 0x0b,
+    E_Fetch_Page_Fault()   => 0x0c,
+    E_Load_Page_Fault()    => 0x0d,
+    E_Reserved_14()        => 0x0e,
+    E_SAMO_Page_Fault()    => 0x0f,
 
     /* extensions */
     E_Extension(e)         => ext_exc_type_to_bits(e)
@@ -247,22 +218,22 @@ function exceptionType_to_bits(e) =
 val exceptionType_of_bits : exc_code -> ExceptionType
 function exceptionType_of_bits(e) =
   match (e) {
-    0x000 => E_Fetch_Addr_Align(),
-    0x001 => E_Fetch_Access_Fault(),
-    0x002 => E_Illegal_Instr(),
-    0x003 => E_Breakpoint(),
-    0x004 => E_Load_Addr_Align(),
-    0x005 => E_Load_Access_Fault(),
-    0x006 => E_SAMO_Addr_Align(),
-    0x007 => E_SAMO_Access_Fault(),
-    0x008 => E_U_EnvCall(),
-    0x009 => E_S_EnvCall(),
-    0x00a => E_Reserved_10(),
-    0x00b => E_M_EnvCall(),
-    0x00c => E_Fetch_Page_Fault(),
-    0x00d => E_Load_Page_Fault(),
-    0x00e => E_Reserved_14(),
-    0x00f => E_SAMO_Page_Fault(),
+    0x00 => E_Fetch_Addr_Align(),
+    0x01 => E_Fetch_Access_Fault(),
+    0x02 => E_Illegal_Instr(),
+    0x03 => E_Breakpoint(),
+    0x04 => E_Load_Addr_Align(),
+    0x05 => E_Load_Access_Fault(),
+    0x06 => E_SAMO_Addr_Align(),
+    0x07 => E_SAMO_Access_Fault(),
+    0x08 => E_U_EnvCall(),
+    0x09 => E_S_EnvCall(),
+    0x0a => E_Reserved_10(),
+    0x0b => E_M_EnvCall(),
+    0x0c => E_Fetch_Page_Fault(),
+    0x0d => E_Load_Page_Fault(),
+    0x0e => E_Reserved_14(),
+    0x0f => E_SAMO_Page_Fault(),
 
     /* extensions (or failure) */
     _ => E_Extension(ext_exc_type_of_bits(e))
@@ -322,14 +293,13 @@ overload to_str = {exceptionType_to_str}
 /* trap modes */
 
 type tv_mode = bits(2)
-enum TrapVectorMode = {TV_Direct, TV_Vector, TV_Smclic, TV_Reserved}
+enum TrapVectorMode = {TV_Direct, TV_Vector, TV_Reserved}
 
 mapping trapVectorMode_bits : tv_mode <-> TrapVectorMode = {
   0b00 <-> TV_Direct,
   0b01 <-> TV_Vector,
   0b10 <-> TV_Reserved,
-  // CLIC also requires xtvec[5:2] to be 0.
-  0b11 <-> TV_Smclic,
+  0b11 <-> TV_Reserved, // Used by CLIC.
 }
 
 /* extension context status */
@@ -358,11 +328,11 @@ function extStatus_of_bits(e) =
 /* supervisor-level address translation modes */
 
 type satp_mode = bits(4)
-enum SATPMode = {Sbare, Sv32, Sv39, Sv48, Sv57}
+enum SATPMode = {Bare, Sv32, Sv39, Sv48, Sv57}
 
 function satpMode_of_bits(a : Architecture, m : satp_mode) -> option(SATPMode) =
   match (a, m) {
-    (_,    0x0) => Some(Sbare),
+    (_,    0x0) => Some(Bare),
     (RV32, 0x1) => Some(Sv32),
     (RV64, 0x8) => Some(Sv39),
     (RV64, 0x9) => Some(Sv48),
@@ -442,18 +412,4 @@ struct mul_op = {
   high       : bool,
   signed_rs1 : bool,
   signed_rs2 : bool
-}
-
-/*!
- * Raise an internal error reporting that width w is invalid for access kind, k,
- * and current xlen. The file name and line number should be passed in as the
- * first two arguments using the __FILE__ and __LINE__ built-in macros.
- * This is mainly used to supress Sail warnings about incomplete matches and
- * should be unreachable. See https://github.com/riscv/sail-riscv/issues/194
- * and https://github.com/riscv/sail-riscv/pull/197 .
- */
-val report_invalid_width : forall ('a : Type). (string, int, word_width, string) -> 'a
-function report_invalid_width(f , l, w, k) -> 'a = {
-  internal_error(f, l, "Invalid width, " ^ size_mnemonic(w) ^ ", for " ^ k ^
-     " with xlen=" ^ dec_str(xlen))
 }

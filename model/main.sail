@@ -23,7 +23,7 @@ function get_entry_point() = zero_extend(0x1000)
 
 $endif
 
-function main() : unit -> unit = () // TODO
+function main() : unit -> unit = ()
 
 // For symbolic execution using Isla, we need an entry point that
 // allows us to execute a single instruction.

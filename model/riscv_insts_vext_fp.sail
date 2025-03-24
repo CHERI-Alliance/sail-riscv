@@ -13,7 +13,7 @@
 /* ******************************************************************************* */
 
 /* ******************************* OPFVV (VVTYPE) ******************************** */
-union clause ast = FVVTYPE : (fvvfunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FVVTYPE : (fvvfunct6, bits(1), vregidx, vregidx, vregidx)
 
 mapping encdec_fvvfunct6 : fvvfunct6 <-> bits(6) = {
   FVV_VADD       <-> 0b000000,
@@ -27,8 +27,8 @@ mapping encdec_fvvfunct6 : fvvfunct6 <-> bits(6) = {
   FVV_VMUL       <-> 0b100100
 }
 
-mapping clause encdec = FVVTYPE(funct6, vm, vs2, vs1, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fvvfunct6(funct6) @ vm @ vs2 @ vs1 @ 0b001 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FVVTYPE(funct6, vm, vs2, vs1, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fvvfunct6(funct6) @ vm @ encdec_vreg(vs2) @ encdec_vreg(vs1) @ 0b001 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FVVTYPE(funct6, vm, vs2, vs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -47,7 +47,7 @@ function clause execute(FVVTYPE(funct6, vm, vs2, vs1, vd)) = {
   let 'n = num_elem;
   let 'm = SEW;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)            = read_vmask(num_elem, vm, zvreg);
   let vs1_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs1);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vd);
@@ -56,7 +56,7 @@ function clause execute(FVVTYPE(funct6, vm, vs2, vs1, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         FVV_VADD     => fp_add(rm_3b, vs2_val[i], vs1_val[i]),
         FVV_VSUB     => fp_sub(rm_3b, vs2_val[i], vs1_val[i]),
@@ -72,7 +72,7 @@ function clause execute(FVVTYPE(funct6, vm, vs2, vs1, vd)) = {
   };
 
   write_vreg(num_elem, SEW, LMUL_pow, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -93,7 +93,7 @@ mapping clause assembly = FVVTYPE(funct6, vm, vs2, vs1, vd)
 
 /* ************************* OPFVV (VVtype Multiply-Add) ************************* */
 /* Multiply-Add instructions switch the order of source operands in assembly (vs1/rs1 before vs2) */
-union clause ast = FVVMATYPE : (fvvmafunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FVVMATYPE : (fvvmafunct6, bits(1), vregidx, vregidx, vregidx)
 
 mapping encdec_fvvmafunct6 : fvvmafunct6 <-> bits(6) = {
   FVV_VMADD      <-> 0b101000,
@@ -106,8 +106,8 @@ mapping encdec_fvvmafunct6 : fvvmafunct6 <-> bits(6) = {
   FVV_VNMSAC     <-> 0b101111
 }
 
-mapping clause encdec = FVVMATYPE(funct6, vm, vs2, vs1, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fvvmafunct6(funct6) @ vm @ vs2 @ vs1 @ 0b001 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FVVMATYPE(funct6, vm, vs2, vs1, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fvvmafunct6(funct6) @ vm @ encdec_vreg(vs2) @ encdec_vreg(vs1) @ 0b001 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FVVMATYPE(funct6, vm, vs2, vs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -126,7 +126,7 @@ function clause execute(FVVMATYPE(funct6, vm, vs2, vs1, vd)) = {
   let 'n = num_elem;
   let 'm = SEW;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)     = read_vmask(num_elem, vm, zvreg);
   let vs1_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs1);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vd);
@@ -135,7 +135,7 @@ function clause execute(FVVMATYPE(funct6, vm, vs2, vs1, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         FVV_VMACC    => fp_muladd(rm_3b, vs1_val[i], vs2_val[i], vd_val[i]),
         FVV_VNMACC   => fp_nmulsub(rm_3b, vs1_val[i], vs2_val[i], vd_val[i]),
@@ -150,7 +150,7 @@ function clause execute(FVVMATYPE(funct6, vm, vs2, vs1, vd)) = {
   };
 
   write_vreg(num_elem, SEW, LMUL_pow, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -169,7 +169,7 @@ mapping clause assembly = FVVMATYPE(funct6, vm, vs2, vs1, vd)
   <-> fvvmatype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs1) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
 
 /* *************************** OPFVV (VVTYPE Widening) *************************** */
-union clause ast = FWVVTYPE : (fwvvfunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FWVVTYPE : (fwvvfunct6, bits(1), vregidx, vregidx, vregidx)
 
 mapping encdec_fwvvfunct6 : fwvvfunct6 <-> bits(6) = {
   FWVV_VADD       <-> 0b110000,
@@ -177,8 +177,8 @@ mapping encdec_fwvvfunct6 : fwvvfunct6 <-> bits(6) = {
   FWVV_VMUL       <-> 0b111000
 }
 
-mapping clause encdec = FWVVTYPE(funct6, vm, vs2, vs1, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fwvvfunct6(funct6) @ vm @ vs2 @ vs1 @ 0b001 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FWVVTYPE(funct6, vm, vs2, vs1, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fwvvfunct6(funct6) @ vm @ encdec_vreg(vs2) @ encdec_vreg(vs1) @ 0b001 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FWVVTYPE(funct6, vm, vs2, vs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -202,7 +202,7 @@ function clause execute(FWVVTYPE(funct6, vm, vs2, vs1, vd)) = {
   let 'm = SEW;
   let 'o = SEW_widen;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
   let vd_val  : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd);
   let vs1_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs1);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
@@ -211,7 +211,7 @@ function clause execute(FWVVTYPE(funct6, vm, vs2, vs1, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         FWVV_VADD    => fp_add(rm_3b, fp_widen(vs2_val[i]), fp_widen(vs1_val[i])),
         FWVV_VSUB    => fp_sub(rm_3b, fp_widen(vs2_val[i]), fp_widen(vs1_val[i])),
@@ -221,7 +221,7 @@ function clause execute(FWVVTYPE(funct6, vm, vs2, vs1, vd)) = {
   };
 
   write_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -236,7 +236,7 @@ mapping clause assembly = FWVVTYPE(funct6, vm, vs2, vs1, vd)
 
 /* ******************** OPFVV (VVtype Widening Multiply-Add) ********************* */
 /* Multiply-Add instructions switch the order of source operands in assembly (vs1/rs1 before vs2) */
-union clause ast = FWVVMATYPE : (fwvvmafunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FWVVMATYPE : (fwvvmafunct6, bits(1), vregidx, vregidx, vregidx)
 
 mapping encdec_fwvvmafunct6 : fwvvmafunct6 <-> bits(6) = {
   FWVV_VMACC      <-> 0b111100,
@@ -245,8 +245,8 @@ mapping encdec_fwvvmafunct6 : fwvvmafunct6 <-> bits(6) = {
   FWVV_VNMSAC     <-> 0b111111
 }
 
-mapping clause encdec = FWVVMATYPE(funct6, vm, vs1, vs2, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fwvvmafunct6(funct6) @ vm @ vs1 @ vs2 @ 0b001 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FWVVMATYPE(funct6, vm, vs1, vs2, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fwvvmafunct6(funct6) @ vm @ encdec_vreg(vs1) @ encdec_vreg(vs2) @ 0b001 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FWVVMATYPE(funct6, vm, vs1, vs2, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -270,7 +270,7 @@ function clause execute(FWVVMATYPE(funct6, vm, vs1, vs2, vd)) = {
   let 'm = SEW;
   let 'o = SEW_widen;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
   let vd_val  : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd);
   let vs1_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs1);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
@@ -279,7 +279,7 @@ function clause execute(FWVVMATYPE(funct6, vm, vs1, vs2, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         FWVV_VMACC   => fp_muladd(rm_3b, fp_widen(vs1_val[i]), fp_widen(vs2_val[i]), vd_val[i]),
         FWVV_VNMACC  => fp_nmulsub(rm_3b, fp_widen(vs1_val[i]), fp_widen(vs2_val[i]), vd_val[i]),
@@ -290,7 +290,7 @@ function clause execute(FWVVMATYPE(funct6, vm, vs1, vs2, vd)) = {
   };
 
   write_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -305,15 +305,15 @@ mapping clause assembly = FWVVMATYPE(funct6, vm, vs1, vs2, vd)
   <-> fwvvmatype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs1) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
 
 /* *************************** OPFVV (WVTYPE Widening) *************************** */
-union clause ast = FWVTYPE : (fwvfunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FWVTYPE : (fwvfunct6, bits(1), vregidx, vregidx, vregidx)
 
 mapping encdec_fwvfunct6 : fwvfunct6 <-> bits(6) = {
   FWV_VADD       <-> 0b110100,
   FWV_VSUB       <-> 0b110110
 }
 
-mapping clause encdec = FWVTYPE(funct6, vm, vs2, vs1, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fwvfunct6(funct6) @ vm @ vs2 @ vs1 @ 0b001 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FWVTYPE(funct6, vm, vs2, vs1, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fwvfunct6(funct6) @ vm @ encdec_vreg(vs2) @ encdec_vreg(vs1) @ 0b001 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FWVTYPE(funct6, vm, vs2, vs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -336,7 +336,7 @@ function clause execute(FWVTYPE(funct6, vm, vs2, vs1, vd)) = {
   let 'm = SEW;
   let 'o = SEW_widen;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
   let vd_val  : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd);
   let vs1_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs1);
   let vs2_val : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vs2);
@@ -345,7 +345,7 @@ function clause execute(FWVTYPE(funct6, vm, vs2, vs1, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         FWV_VADD     => fp_add(rm_3b, vs2_val[i], fp_widen(vs1_val[i])),
         FWV_VSUB     => fp_sub(rm_3b, vs2_val[i], fp_widen(vs1_val[i]))
@@ -354,7 +354,7 @@ function clause execute(FWVTYPE(funct6, vm, vs2, vs1, vd)) = {
   };
 
   write_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -367,7 +367,7 @@ mapping clause assembly = FWVTYPE(funct6, vm, vs2, vs1, vd)
   <-> fwvtype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ sep() ^ vreg_name(vs1) ^ maybe_vmask(vm)
 
 /* ****************************** OPFVV (VFUNARY0) ******************************* */
-union clause ast = VFUNARY0 : (bits(1), regidx, vfunary0, regidx)
+union clause ast = VFUNARY0 : (bits(1), vregidx, vfunary0, vregidx)
 
 mapping encdec_vfunary0_vs1 : vfunary0 <-> bits(5) = {
   FV_CVT_XU_F       <-> 0b00000,
@@ -378,8 +378,8 @@ mapping encdec_vfunary0_vs1 : vfunary0 <-> bits(5) = {
   FV_CVT_RTZ_X_F    <-> 0b00111
 }
 
-mapping clause encdec = VFUNARY0(vm, vs2, vfunary0, vd) if extensionEnabled(Ext_V)
-  <-> 0b010010 @ vm @ vs2 @ encdec_vfunary0_vs1(vfunary0) @ 0b001 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VFUNARY0(vm, vs2, vfunary0, vd)                                                      if extensionEnabled(Ext_V)
+  <-> 0b010010 @ vm @ encdec_vreg(vs2) @ encdec_vfunary0_vs1(vfunary0) @ 0b001 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(VFUNARY0(vm, vs2, vfunary0, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -397,7 +397,7 @@ function clause execute(VFUNARY0(vm, vs2, vfunary0, vd)) = {
   let 'n = num_elem;
   let 'm = SEW;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vd);
 
@@ -405,7 +405,7 @@ function clause execute(VFUNARY0(vm, vs2, vfunary0, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match vfunary0 {
         FV_CVT_XU_F      => {
                               let (fflags, elem) : (bits_fflags, bits('m)) = match 'm {
@@ -466,7 +466,7 @@ function clause execute(VFUNARY0(vm, vs2, vfunary0, vd)) = {
   };
 
   write_vreg(num_elem, SEW, LMUL_pow, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -483,7 +483,7 @@ mapping clause assembly = VFUNARY0(vm, vs2, vfunary0, vd)
   <-> vfunary0_mnemonic(vfunary0) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
 
 /* ************************** OPFVV (VFUNARY0 Widening) ************************** */
-union clause ast = VFWUNARY0 : (bits(1), regidx, vfwunary0, regidx)
+union clause ast = VFWUNARY0 : (bits(1), vregidx, vfwunary0, vregidx)
 
 mapping encdec_vfwunary0_vs1 : vfwunary0 <-> bits(5) = {
   FWV_CVT_XU_F      <-> 0b01000,
@@ -495,8 +495,8 @@ mapping encdec_vfwunary0_vs1 : vfwunary0 <-> bits(5) = {
   FWV_CVT_RTZ_X_F   <-> 0b01111
 }
 
-mapping clause encdec = VFWUNARY0(vm, vs2, vfwunary0, vd) if extensionEnabled(Ext_V)
-  <-> 0b010010 @ vm @ vs2 @ encdec_vfwunary0_vs1(vfwunary0) @ 0b001 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VFWUNARY0(vm, vs2, vfwunary0, vd)                                                      if extensionEnabled(Ext_V)
+  <-> 0b010010 @ vm @ encdec_vreg(vs2) @ encdec_vfwunary0_vs1(vfwunary0) @ 0b001 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(VFWUNARY0(vm, vs2, vfwunary0, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -517,7 +517,7 @@ function clause execute(VFWUNARY0(vm, vs2, vfwunary0, vd)) = {
   let 'm = SEW;
   let 'o = SEW_widen;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
   let vd_val  : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd);
 
@@ -525,7 +525,7 @@ function clause execute(VFWUNARY0(vm, vs2, vfwunary0, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match vfwunary0 {
         FWV_CVT_XU_F     => {
                               let (fflags, elem) : (bits_fflags, bits('o)) = match 'm {
@@ -595,7 +595,7 @@ function clause execute(VFWUNARY0(vm, vs2, vfwunary0, vd)) = {
   };
 
   write_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -613,7 +613,7 @@ mapping clause assembly = VFWUNARY0(vm, vs2, vfwunary0, vd)
   <-> vfwunary0_mnemonic(vfwunary0) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
 
 /* ************************* OPFVV (VFUNARY0 Narrowing) ************************** */
-union clause ast = VFNUNARY0 : (bits(1), regidx, vfnunary0, regidx)
+union clause ast = VFNUNARY0 : (bits(1), vregidx, vfnunary0, vregidx)
 
 mapping encdec_vfnunary0_vs1 : vfnunary0 <-> bits(5) = {
   FNV_CVT_XU_F      <-> 0b10000,
@@ -626,8 +626,8 @@ mapping encdec_vfnunary0_vs1 : vfnunary0 <-> bits(5) = {
   FNV_CVT_RTZ_X_F   <-> 0b10111
 }
 
-mapping clause encdec = VFNUNARY0(vm, vs2, vfnunary0, vd) if extensionEnabled(Ext_V)
-  <-> 0b010010 @ vm @ vs2 @ encdec_vfnunary0_vs1(vfnunary0) @ 0b001 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VFNUNARY0(vm, vs2, vfnunary0, vd)                                                      if extensionEnabled(Ext_V)
+  <-> 0b010010 @ vm @ encdec_vreg(vs2) @ encdec_vfnunary0_vs1(vfnunary0) @ 0b001 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(VFNUNARY0(vm, vs2, vfnunary0, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -648,7 +648,7 @@ function clause execute(VFNUNARY0(vm, vs2, vfnunary0, vd)) = {
   let 'm = SEW;
   let 'o = SEW_widen;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
   let vs2_val : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vs2);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vd);
 
@@ -656,7 +656,7 @@ function clause execute(VFNUNARY0(vm, vs2, vfnunary0, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match vfnunary0 {
         FNV_CVT_XU_F     => {
                               let (fflags, elem) : (bits_fflags, bits('m)) = match 'm {
@@ -735,7 +735,7 @@ function clause execute(VFNUNARY0(vm, vs2, vfnunary0, vd)) = {
   };
 
   write_vreg(num_elem, SEW, LMUL_pow, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -754,7 +754,7 @@ mapping clause assembly = VFNUNARY0(vm, vs2, vfnunary0, vd)
   <-> vfnunary0_mnemonic(vfnunary0) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
 
 /* ****************************** OPFVV (VFUNARY1) ******************************* */
-union clause ast = VFUNARY1 : (bits(1), regidx, vfunary1, regidx)
+union clause ast = VFUNARY1 : (bits(1), vregidx, vfunary1, vregidx)
 
 mapping encdec_vfunary1_vs1 : vfunary1 <-> bits(5) = {
   FVV_VSQRT       <-> 0b00000,
@@ -763,8 +763,8 @@ mapping encdec_vfunary1_vs1 : vfunary1 <-> bits(5) = {
   FVV_VCLASS      <-> 0b10000
 }
 
-mapping clause encdec = VFUNARY1(vm, vs2, vfunary1, vd) if extensionEnabled(Ext_V)
-  <-> 0b010011 @ vm @ vs2 @ encdec_vfunary1_vs1(vfunary1) @ 0b001 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VFUNARY1(vm, vs2, vfunary1, vd)                                                      if extensionEnabled(Ext_V)
+  <-> 0b010011 @ vm @ encdec_vreg(vs2) @ encdec_vfunary1_vs1(vfunary1) @ 0b001 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(VFUNARY1(vm, vs2, vfunary1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -782,7 +782,7 @@ function clause execute(VFUNARY1(vm, vs2, vfunary1, vd)) = {
   let 'n = num_elem;
   let 'm = SEW;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vd);
 
@@ -790,7 +790,7 @@ function clause execute(VFUNARY1(vm, vs2, vfunary1, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match vfunary1 {
         FVV_VSQRT      => {
                             let (fflags, elem) : (bits_fflags, bits('m)) = match 'm {
@@ -825,7 +825,7 @@ function clause execute(VFUNARY1(vm, vs2, vfunary1, vd)) = {
   };
 
   write_vreg(num_elem, SEW, LMUL_pow, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -840,10 +840,10 @@ mapping clause assembly = VFUNARY1(vm, vs2, vfunary1, vd)
   <-> vfunary1_mnemonic(vfunary1) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
 
 /* ****************************** OPFVV (VWFUNARY0) ****************************** */
-union clause ast = VFMVFS : (regidx, regidx)
+union clause ast = VFMVFS : (vregidx, fregidx)
 
-mapping clause encdec = VFMVFS(vs2, rd) if extensionEnabled(Ext_V)
-  <-> 0b010000 @ 0b1 @ vs2 @ 0b00000 @ 0b001 @ rd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VFMVFS(vs2, rd)                                                 if extensionEnabled(Ext_V)
+  <-> 0b010000 @ 0b1 @ encdec_vreg(vs2) @ 0b00000 @ 0b001 @ encdec_freg(rd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(VFMVFS(vs2, rd)) = {
   let rm_3b    = fcsr[FRM];
@@ -863,8 +863,8 @@ function clause execute(VFMVFS(vs2, rd)) = {
     32 => F_S(rd) = vs2_val[0],
     64 => F_D(rd) = vs2_val[0]
   };
+  set_vstart(zeros());
 
-  write_vstart(0);
   RETIRE_SUCCESS
 }
 
@@ -872,7 +872,7 @@ mapping clause assembly = VFMVFS(vs2, rd)
   <-> "vfmv.f.s" ^ spc() ^ freg_name(rd) ^ sep() ^ vreg_name(vs2)
 
 /* ******************************* OPFVF (VFtype) ******************************** */
-union clause ast = FVFTYPE : (fvffunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FVFTYPE : (fvffunct6, bits(1), vregidx, fregidx, vregidx)
 
 mapping encdec_fvffunct6 : fvffunct6 <-> bits(6) = {
   VF_VADD          <-> 0b000000,
@@ -890,8 +890,8 @@ mapping encdec_fvffunct6 : fvffunct6 <-> bits(6) = {
   VF_VRSUB         <-> 0b100111
 }
 
-mapping clause encdec = FVFTYPE(funct6, vm, vs2, rs1, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fvffunct6(funct6) @ vm @ vs2 @ rs1 @ 0b101 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FVFTYPE(funct6, vm, vs2, rs1, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fvffunct6(funct6) @ vm @ encdec_vreg(vs2) @ encdec_freg(rs1) @ 0b101 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FVFTYPE(funct6, vm, vs2, rs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -909,8 +909,8 @@ function clause execute(FVFTYPE(funct6, vm, vs2, rs1, vd)) = {
   let 'n = num_elem;
   let 'm = SEW;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
-  let rs1_val : bits('m)                  = get_scalar_fp(rs1, 'm);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
+  let rs1_val : bits('m)             = get_scalar_fp(rs1, 'm);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vd);
 
@@ -918,7 +918,7 @@ function clause execute(FVFTYPE(funct6, vm, vs2, rs1, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         VF_VADD          => fp_add(rm_3b, vs2_val[i], rs1_val),
         VF_VSUB          => fp_sub(rm_3b, vs2_val[i], rs1_val),
@@ -945,7 +945,7 @@ function clause execute(FVFTYPE(funct6, vm, vs2, rs1, vd)) = {
   };
 
   write_vreg(num_elem, SEW, LMUL_pow, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -966,11 +966,11 @@ mapping fvftype_mnemonic : fvffunct6 <-> string = {
 }
 
 mapping clause assembly = FVFTYPE(funct6, vm, vs2, rs1, vd)
-  <-> fvftype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ sep() ^ reg_name(rs1) ^ maybe_vmask(vm)
+  <-> fvftype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ sep() ^ freg_name(rs1) ^ maybe_vmask(vm)
 
 /* ************************* OPFVF (VFtype Multiply-Add) ************************* */
 /* Multiply-Add instructions switch the order of source operands in assembly (vs1/rs1 before vs2) */
-union clause ast = FVFMATYPE : (fvfmafunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FVFMATYPE : (fvfmafunct6, bits(1), vregidx, fregidx, vregidx)
 
 mapping encdec_fvfmafunct6 : fvfmafunct6 <-> bits(6) = {
   VF_VMADD      <-> 0b101000,
@@ -983,8 +983,8 @@ mapping encdec_fvfmafunct6 : fvfmafunct6 <-> bits(6) = {
   VF_VNMSAC     <-> 0b101111
 }
 
-mapping clause encdec = FVFMATYPE(funct6, vm, vs2, rs1, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fvfmafunct6(funct6) @ vm @ vs2 @ rs1 @ 0b101 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FVFMATYPE(funct6, vm, vs2, rs1, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fvfmafunct6(funct6) @ vm @ encdec_vreg(vs2) @ encdec_freg(rs1) @ 0b101 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FVFMATYPE(funct6, vm, vs2, rs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -1002,8 +1002,8 @@ function clause execute(FVFMATYPE(funct6, vm, vs2, rs1, vd)) = {
   let 'n = num_elem;
   let 'm = SEW;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
-  let rs1_val : bits('m)                  = get_scalar_fp(rs1, 'm);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
+  let rs1_val : bits('m)             = get_scalar_fp(rs1, 'm);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vd);
 
@@ -1011,7 +1011,7 @@ function clause execute(FVFMATYPE(funct6, vm, vs2, rs1, vd)) = {
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         VF_VMACC    => fp_muladd(rm_3b, rs1_val, vs2_val[i], vd_val[i]),
         VF_VNMACC   => fp_nmulsub(rm_3b, rs1_val, vs2_val[i], vd_val[i]),
@@ -1026,7 +1026,7 @@ function clause execute(FVFMATYPE(funct6, vm, vs2, rs1, vd)) = {
   };
 
   write_vreg(num_elem, SEW, LMUL_pow, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -1042,10 +1042,10 @@ mapping fvfmatype_mnemonic : fvfmafunct6 <-> string = {
 }
 
 mapping clause assembly = FVFMATYPE(funct6, vm, vs2, rs1, vd)
-  <-> fvfmatype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ reg_name(rs1) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
+  <-> fvfmatype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ freg_name(rs1) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
 
 /* *************************** OPFVF (VFTYPE Widening) *************************** */
-union clause ast = FWVFTYPE : (fwvffunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FWVFTYPE : (fwvffunct6, bits(1), vregidx, fregidx, vregidx)
 
 mapping encdec_fwvffunct6 : fwvffunct6 <-> bits(6) = {
   FWVF_VADD       <-> 0b110000,
@@ -1053,8 +1053,8 @@ mapping encdec_fwvffunct6 : fwvffunct6 <-> bits(6) = {
   FWVF_VMUL       <-> 0b111000
 }
 
-mapping clause encdec = FWVFTYPE(funct6, vm, vs2, rs1, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fwvffunct6(funct6) @ vm @ vs2 @ rs1 @ 0b101 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FWVFTYPE(funct6, vm, vs2, rs1, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fwvffunct6(funct6) @ vm @ encdec_vreg(vs2) @ encdec_freg(rs1) @ 0b101 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FWVFTYPE(funct6, vm, vs2, rs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -1076,16 +1076,16 @@ function clause execute(FWVFTYPE(funct6, vm, vs2, rs1, vd)) = {
   let 'm = SEW;
   let 'o = SEW_widen;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)             = read_vmask(num_elem, vm, zvreg);
   let vd_val  : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd);
-  let rs1_val : bits('m)                  = get_scalar_fp(rs1, 'm);
+  let rs1_val : bits('m)             = get_scalar_fp(rs1, 'm);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
 
   let (initial_result, mask) = init_masked_result(num_elem, SEW_widen, LMUL_pow_widen, vd_val, vm_val);
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         FWVF_VADD    => fp_add(rm_3b, fp_widen(vs2_val[i]), fp_widen(rs1_val)),
         FWVF_VSUB    => fp_sub(rm_3b, fp_widen(vs2_val[i]), fp_widen(rs1_val)),
@@ -1095,7 +1095,7 @@ function clause execute(FWVFTYPE(funct6, vm, vs2, rs1, vd)) = {
   };
 
   write_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -1106,11 +1106,11 @@ mapping fwvftype_mnemonic : fwvffunct6 <-> string = {
 }
 
 mapping clause assembly = FWVFTYPE(funct6, vm, vs2, rs1, vd)
-  <-> fwvftype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ sep() ^ reg_name(rs1) ^ maybe_vmask(vm)
+  <-> fwvftype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ sep() ^ freg_name(rs1) ^ maybe_vmask(vm)
 
 /* ******************** OPFVF (VFtype Widening Multiply-Add) ********************* */
 /* Multiply-Add instructions switch the order of source operands in assembly (vs1/rs1 before vs2) */
-union clause ast = FWVFMATYPE : (fwvfmafunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FWVFMATYPE : (fwvfmafunct6, bits(1), fregidx, vregidx, vregidx)
 
 mapping encdec_fwvfmafunct6 : fwvfmafunct6 <-> bits(6) = {
   FWVF_VMACC      <-> 0b111100,
@@ -1119,8 +1119,8 @@ mapping encdec_fwvfmafunct6 : fwvfmafunct6 <-> bits(6) = {
   FWVF_VNMSAC     <-> 0b111111
 }
 
-mapping clause encdec = FWVFMATYPE(funct6, vm, rs1, vs2, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fwvfmafunct6(funct6) @ vm @ vs2 @ rs1 @ 0b101 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FWVFMATYPE(funct6, vm, rs1, vs2, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fwvfmafunct6(funct6) @ vm @ encdec_vreg(vs2) @ encdec_freg(rs1) @ 0b101 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FWVFMATYPE(funct6, vm, rs1, vs2, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -1142,16 +1142,16 @@ function clause execute(FWVFMATYPE(funct6, vm, rs1, vs2, vd)) = {
   let 'm = SEW;
   let 'o = SEW_widen;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)     = read_vmask(num_elem, vm, zvreg);
   let vd_val  : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd);
-  let rs1_val : bits('m)                  = get_scalar_fp(rs1, 'm);
+  let rs1_val : bits('m)             = get_scalar_fp(rs1, 'm);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
 
   let (initial_result, mask) = init_masked_result(num_elem, SEW_widen, LMUL_pow_widen, vd_val, vm_val);
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         FWVF_VMACC   => fp_muladd(rm_3b, fp_widen(rs1_val), fp_widen(vs2_val[i]), vd_val[i]),
         FWVF_VNMACC  => fp_nmulsub(rm_3b, fp_widen(rs1_val), fp_widen(vs2_val[i]), vd_val[i]),
@@ -1162,7 +1162,7 @@ function clause execute(FWVFMATYPE(funct6, vm, rs1, vs2, vd)) = {
   };
 
   write_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -1174,18 +1174,18 @@ mapping fwvfmatype_mnemonic : fwvfmafunct6 <-> string = {
 }
 
 mapping clause assembly = FWVFMATYPE(funct6, vm, rs1, vs2, vd)
-  <-> fwvfmatype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ reg_name(rs1) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
+  <-> fwvfmatype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ freg_name(rs1) ^ sep() ^ vreg_name(vs2) ^ maybe_vmask(vm)
 
 /* *************************** OPFVF (WFTYPE Widening) *************************** */
-union clause ast = FWFTYPE : (fwffunct6, bits(1), regidx, regidx, regidx)
+union clause ast = FWFTYPE : (fwffunct6, bits(1), vregidx, fregidx, vregidx)
 
 mapping encdec_fwffunct6 : fwffunct6 <-> bits(6) = {
   FWF_VADD       <-> 0b110100,
   FWF_VSUB       <-> 0b110110
 }
 
-mapping clause encdec = FWFTYPE(funct6, vm, vs2, rs1, vd) if extensionEnabled(Ext_V)
-  <-> encdec_fwffunct6(funct6) @ vm @ vs2 @ rs1 @ 0b101 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = FWFTYPE(funct6, vm, vs2, rs1, vd)                                                       if extensionEnabled(Ext_V)
+  <-> encdec_fwffunct6(funct6) @ vm @ encdec_vreg(vs2) @ encdec_freg(rs1) @ 0b101 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(FWFTYPE(funct6, vm, vs2, rs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -1206,16 +1206,16 @@ function clause execute(FWFTYPE(funct6, vm, vs2, rs1, vd)) = {
   let 'm = SEW;
   let 'o = SEW_widen;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, vm, 0b00000);
+  let vm_val  : bits('n)     = read_vmask(num_elem, vm, zvreg);
   let vd_val  : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd);
-  let rs1_val : bits('m)                  = get_scalar_fp(rs1, 'm);
+  let rs1_val : bits('m)             = get_scalar_fp(rs1, 'm);
   let vs2_val : vector('n, bits('o)) = read_vreg(num_elem, SEW_widen, LMUL_pow_widen, vs2);
 
   let (initial_result, mask) = init_masked_result(num_elem, SEW_widen, LMUL_pow_widen, vd_val, vm_val);
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then {
+    if mask[i] == bitone then {
       result[i] = match funct6 {
         FWF_VADD     => fp_add(rm_3b, vs2_val[i], fp_widen(rs1_val)),
         FWF_VSUB     => fp_sub(rm_3b, vs2_val[i], fp_widen(rs1_val))
@@ -1224,7 +1224,7 @@ function clause execute(FWFTYPE(funct6, vm, vs2, rs1, vd)) = {
   };
 
   write_vreg(num_elem, SEW_widen, LMUL_pow_widen, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
@@ -1234,14 +1234,14 @@ mapping fwftype_mnemonic : fwffunct6 <-> string = {
 }
 
 mapping clause assembly = FWFTYPE(funct6, vm, vs2, rs1, vd)
-  <-> fwftype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ sep() ^ reg_name(rs1) ^ maybe_vmask(vm)
+  <-> fwftype_mnemonic(funct6) ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ sep() ^ freg_name(rs1) ^ maybe_vmask(vm)
 
 /* ************************** OPFVF (Merge Instruction) ************************** */
 /* This instruction operates on all body elements regardless of mask value */
-union clause ast = VFMERGE : (regidx, regidx, regidx)
+union clause ast = VFMERGE : (vregidx, fregidx, vregidx)
 
-mapping clause encdec = VFMERGE(vs2, rs1, vd) if extensionEnabled(Ext_V)
-  <-> 0b010111 @ 0b0 @ vs2 @ rs1 @ 0b101 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VFMERGE(vs2, rs1, vd)                                                    if extensionEnabled(Ext_V)
+  <-> 0b010111 @ 0b0 @ encdec_vreg(vs2) @ encdec_freg(rs1) @ 0b101 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(VFMERGE(vs2, rs1, vd)) = {
   let rm_3b         = fcsr[FRM];
@@ -1262,8 +1262,8 @@ function clause execute(VFMERGE(vs2, rs1, vd)) = {
   let 'n = num_elem;
   let 'm = SEW;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, 0b0, 0b00000);
-  let rs1_val : bits('m)                  = get_scalar_fp(rs1, 'm);
+  let vm_val  : bits('n)             = read_vmask(num_elem, 0b0, zvreg);
+  let rs1_val : bits('m)             = get_scalar_fp(rs1, 'm);
   let vs2_val : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vs2);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vd);
   var result  : vector('n, bits('m)) = vector_init(zeros());
@@ -1279,24 +1279,24 @@ function clause execute(VFMERGE(vs2, rs1, vd)) = {
       }
     } else {
       /* the merge operates on all body elements */
-      result[i] = if vm_val[i] then rs1_val else vs2_val[i]
+      result[i] = if vm_val[i] == bitone then rs1_val else vs2_val[i]
     }
   };
 
   write_vreg(num_elem, SEW, LMUL_pow, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
 mapping clause assembly = VFMERGE(vs2, rs1, vd)
-  <-> "vfmerge.vfm" ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ sep() ^ reg_name(rs1) ^ sep() ^ "v0"
+  <-> "vfmerge.vfm" ^ spc() ^ vreg_name(vd) ^ sep() ^ vreg_name(vs2) ^ sep() ^ freg_name(rs1) ^ sep() ^ "v0"
 
 /* ************************** OPFVF (Move Instruction) *************************** */
 /* This instruction shares the encoding with vfmerge.vfm, but with vm=1 and vs2=v0 */
-union clause ast = VFMV : (regidx, regidx)
+union clause ast = VFMV : (fregidx, vregidx)
 
-mapping clause encdec = VFMV(rs1, vd) if extensionEnabled(Ext_V)
-  <-> 0b010111 @ 0b1 @ 0b00000 @ rs1 @ 0b101 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VFMV(rs1, vd)                                                   if extensionEnabled(Ext_V)
+  <-> 0b010111 @ 0b1 @ 0b00000 @ encdec_freg(rs1) @ 0b101 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(VFMV(rs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -1313,30 +1313,30 @@ function clause execute(VFMV(rs1, vd)) = {
   let 'n = num_elem;
   let 'm = SEW;
 
-  let rs1_val : bits('m)                  = get_scalar_fp(rs1, 'm);
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, 0b1, 0b00000);
+  let rs1_val : bits('m)             = get_scalar_fp(rs1, 'm);
+  let vm_val  : bits('n)             = read_vmask(num_elem, 0b1, zvreg);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, LMUL_pow, vd);
 
   let (initial_result, mask) = init_masked_result(num_elem, SEW, LMUL_pow, vd_val, vm_val);
   var result = initial_result;
 
   foreach (i from 0 to (num_elem - 1)) {
-    if mask[i] then result[i] = rs1_val
+    if mask[i] == bitone then result[i] = rs1_val
   };
 
   write_vreg(num_elem, SEW, LMUL_pow, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 
 mapping clause assembly = VFMV(rs1, vd)
-  <-> "vfmv.v.f" ^ spc() ^ vreg_name(vd) ^ sep() ^ reg_name(rs1)
+  <-> "vfmv.v.f" ^ spc() ^ vreg_name(vd) ^ sep() ^ freg_name(rs1)
 
 /* ****************************** OPFVF (VRFUNARY0) ****************************** */
-union clause ast = VFMVSF : (regidx, regidx)
+union clause ast = VFMVSF : (fregidx, vregidx)
 
-mapping clause encdec = VFMVSF(rs1, vd) if extensionEnabled(Ext_V)
-  <-> 0b010000 @ 0b1 @ 0b00000 @ rs1 @ 0b101 @ vd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VFMVSF(rs1, vd)                                                 if extensionEnabled(Ext_V)
+  <-> 0b010000 @ 0b1 @ 0b00000 @ encdec_freg(rs1) @ 0b101 @ encdec_vreg(vd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute(VFMVSF(rs1, vd)) = {
   let rm_3b    = fcsr[FRM];
@@ -1353,15 +1353,15 @@ function clause execute(VFMVSF(rs1, vd)) = {
   let 'n = num_elem;
   let 'm = SEW;
 
-  let vm_val  : vector('n, bool)     = read_vmask(num_elem, 0b1, 0b00000);
-  let rs1_val : bits('m)                  = get_scalar_fp(rs1, 'm);
+  let vm_val  : bits('n)             = read_vmask(num_elem, 0b1, zvreg);
+  let rs1_val : bits('m)             = get_scalar_fp(rs1, 'm);
   let vd_val  : vector('n, bits('m)) = read_vreg(num_elem, SEW, 0, vd);
 
   let (initial_result, mask) = init_masked_result(num_elem, SEW, 0, vd_val, vm_val);
   var result = initial_result;
 
   /* one body element */
-  if mask[0] then result[0] = rs1_val;
+  if mask[0] == bitone then result[0] = rs1_val;
 
   /* others treated as tail elements */
   let tail_ag : agtype = get_vtype_vta();
@@ -1373,7 +1373,7 @@ function clause execute(VFMVSF(rs1, vd)) = {
   };
 
   write_vreg(num_elem, SEW, 0, vd, result);
-  write_vstart(0);
+  set_vstart(zeros());
   RETIRE_SUCCESS
 }
 

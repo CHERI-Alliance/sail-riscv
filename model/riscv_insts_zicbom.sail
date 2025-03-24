@@ -7,18 +7,12 @@
 /*=======================================================================================*/
 
 // Cache Block Operations - Management
-//
-// Note that the CBOP prefetch instructions are existing base instructions that
-// are just defined to be hints, so there is not need to add any code for them
-// (since this model has no caches to prefetch into and the encodings already
-// exist).
 
-enum clause extension = Ext_Zicbom
 function clause extensionEnabled(Ext_Zicbom) = sys_enable_zicbom()
 
-function cbo_clean_flush_enabled(p : Privilege) -> bool = feature_enabled_for_priv(p, menvcfg.CBCFE()[0], senvcfg.CBCFE()[0])
-function cbo_inval_enabled(p : Privilege) -> bool = feature_enabled_for_priv(p, menvcfg.CBIE()[0], senvcfg.CBIE()[0])
-function cbo_inval_as_inval(p : Privilege) -> bool = feature_enabled_for_priv(p, menvcfg.CBIE()[1], senvcfg.CBIE()[1])
+function cbo_clean_flush_enabled(p : Privilege) -> bool = feature_enabled_for_priv(p, menvcfg[CBCFE][0], senvcfg[CBCFE][0])
+function cbo_inval_enabled(p : Privilege) -> bool = feature_enabled_for_priv(p, menvcfg[CBIE][0], senvcfg[CBIE][0])
+function cbo_inval_as_inval(p : Privilege) -> bool = feature_enabled_for_priv(p, menvcfg[CBIE][1], senvcfg[CBIE][1])
 
 /* ****************************************************************** */
 union clause ast = RISCV_ZICBOM : (cbop_zicbom, regidx)
@@ -26,11 +20,11 @@ union clause ast = RISCV_ZICBOM : (cbop_zicbom, regidx)
 mapping encdec_cbop : cbop_zicbom <-> bits(12) = {
   CBO_CLEAN <-> 0b000000000001,
   CBO_FLUSH <-> 0b000000000010,
-  CBO_INVAL <-> 0b000000000000
+  CBO_INVAL <-> 0b000000000000,
 }
 
-mapping clause encdec = RISCV_ZICBOM(cbop, rs1)             if extensionEnabled(Ext_Zicbom)
-  <-> encdec_cbop(cbop) @ rs1 @ 0b010 @ 0b00000 @ 0b0001111 if extensionEnabled(Ext_Zicbom)
+mapping clause encdec = RISCV_ZICBOM(cbop, rs1)                         if extensionEnabled(Ext_Zicbom)
+  <-> encdec_cbop(cbop) @ encdec_reg(rs1) @ 0b010 @ 0b00000 @ 0b0001111 if extensionEnabled(Ext_Zicbom)
 
 mapping cbop_mnemonic : cbop_zicbom <-> string = {
   CBO_CLEAN <-> "cbo.clean",
@@ -47,29 +41,21 @@ function process_clean_inval(rs1, cbop, cbop_orig) = {
   let cache_block_size_exp = plat_cache_block_size_exp();
   let cache_block_size = 2 ^ cache_block_size_exp;
 
-  // Offset from the requested address to the beginning of the cache block (this will be negative).
-  let offset = (rs1_val & ~(zero_extend(ones(cache_block_size_exp)))) - rs1_val;
+  // Offset from rs1 to the beginning of the cache block. This is 0 if rs1
+  // is aligned to the cache block, or negative if rs1 is misaligned.
+  let negative_offset = (rs1_val & ~(zero_extend(ones(cache_block_size_exp)))) - rs1_val;
 
   // Get access type based on *original* instruction type, not the adjusted version
-  let acc_type: AccessType(ext_access_type) = match (cbop_orig) {
-    CBO_CLEAN => Cache(Data),
-    CBO_FLUSH => Cache(Data),
-    CBO_INVAL => CacheInval(Data)
+  let acc_type: AccessType(ext_access_type) = match cbop_orig {
+    CBO_CLEAN => Cache(CleanFlush),
+    CBO_FLUSH => Cache(CleanFlush),
+    CBO_INVAL => Cache(Inval)
   };
 
-  let (vaddr, check_result) = ext_data_get_addr(rs1, offset, acc_type, cache_block_size);
-  match check_and_handle_cbo_vaddr_for_triggers(vaddr - offset, get_arch_pc()) {
-    Some(ret) => return ret,
-    _ => ()
-  };
-  match check_result {
+  match ext_data_get_addr(rs1, negative_offset, acc_type, cache_block_size) {
     Ext_DataAddr_Error(e) => { ext_handle_data_check_error(e); RETIRE_FAIL },
-    Ext_DataAddr_OK() => {
-      match forced_mem_exception_hook() {
-          Some(ret) => return ret,
-          None() => ()
-      };
-      let res: option(ExceptionType) = match translateAddr(vaddr, Read(Data)) {
+    Ext_DataAddr_OK(vaddr) => {
+      let res : option(ExceptionType) = match translateAddr(vaddr, Read(Data)) {
         TR_Address(paddr, pbmt, _) => {
           // "A cache-block management instruction is permitted to access the
           // specified cache block whenever a load instruction or store instruction
@@ -89,7 +75,7 @@ function process_clean_inval(rs1, cbop, cbop_orig) = {
             (Some(e0), Some(e1)) => Some(e1),
           }
         },
-        TR_Failure(e) => Some(e)
+        TR_Failure(e, _) => Some(e)
       };
       // "If access to the cache block is not permitted, a cache-block management
       //  instruction raises a store page fault or store guest-page fault exception
@@ -108,12 +94,11 @@ function process_clean_inval(rs1, cbop, cbop_orig) = {
             // for fetch access and it's can't be misaligned.
             _ => internal_error(__FILE__, __LINE__, "unexpected exception for cmo.clean/inval"),
           };
-          // Report the address specified by the instruction rather than the actual access address.
-          // See https://github.com/riscv/riscv-isa-manual/pull/1433
-          handle_mem_exception(vaddr - offset, e);
-
-          // Logical behaviour:
-          // handle_mem_exception(vaddr, e);
+          // vaddr is the aligned address, but errors report the address that
+          // was encoded in the instruction. We subtract the negative offset
+          // (add the positive offset) to get it. Normally this will be
+          // equal to rs1, but pointer masking can change that.
+          handle_mem_exception(vaddr - negative_offset, e);
           RETIRE_FAIL
         }
       }

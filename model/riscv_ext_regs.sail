@@ -11,26 +11,15 @@
  */
 
 /*!
-This function is called after above when running rvfi and allows the model
-to be initialised differently (e.g. CHERI cap regs are initialised
-to omnipotent instead of null).
- */
-val ext_rvfi_reset : unit -> unit
-function ext_rvfi_reset () = {
-  x1 = x1 // to avoid hook being optimized out
-}
-
-
-/*!
-THIS(csrno, priv, isWrite) allows an extension to block access to csrno,
+This allows an extension to block access to csrno,
 at Privilege level priv. It should return true if the access is allowed.
 */
-val ext_check_CSR : (csreg, Privilege, bool) -> bool
-function ext_check_CSR (csrno, p, isWrite) = true
+val ext_check_CSR : (csreg, Privilege, bool, csrop, bool) -> option(ext_csr_exc_type)
+function ext_check_CSR (csrno, p, isWrite, op, is_imm) = None()
 
 /*!
 THIS is called if ext_check_CSR returns false. It should
 cause an appropriate RISCV exception.
  */
-val ext_check_CSR_fail : unit->unit
-function ext_check_CSR_fail () = ()
+val ext_check_CSR_fail : (ext_csr_exc_type) -> unit
+function ext_check_CSR_fail (fail_type) = ()

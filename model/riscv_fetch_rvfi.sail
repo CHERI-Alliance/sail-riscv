@@ -7,7 +7,7 @@
 /*=======================================================================================*/
 
 function fetch() -> FetchResult = {
-  rvfi_inst_data[rvfi_order]    = minstret;
+  rvfi_inst_data[rvfi_order] = minstret;
   rvfi_pc_data[rvfi_pc_rdata] = zero_extend(get_arch_pc());
   rvfi_inst_data[rvfi_mode] = zero_extend(privLevel_to_bits(cur_privilege()));
   rvfi_inst_data[rvfi_ixl] = zero_extend(misa[MXL]);
@@ -17,10 +17,11 @@ function fetch() -> FetchResult = {
     Ext_FetchAddr_Error(e)   => F_Ext_Error(e),
     Ext_FetchAddr_OK(use_pc) => {
       /* then check PC alignment */
-      if   (use_pc[0] != bitzero | (use_pc[1] != bitzero & not(extensionEnabled(Ext_Zca))))
+      let use_pc_bits = virtaddr_bits(use_pc);
+      if   (use_pc_bits[0] != bitzero | (use_pc_bits[1] != bitzero & not(extensionEnabled(Ext_Zca))))
       then F_Error(E_Fetch_Addr_Align(), PC)
       else match translateAddr(use_pc, Execute()) {
-        TR_Failure(e) => F_Error(e, PC),
+        TR_Failure(e, _) => F_Error(e, PC),
         TR_Address(_, _, _) => {
           let i = rvfi_instruction[rvfi_insn];
           rvfi_inst_data[rvfi_insn]   = zero_extend(i);
@@ -33,7 +34,7 @@ function fetch() -> FetchResult = {
               Ext_FetchAddr_Error(e)      => F_Ext_Error(e),
               Ext_FetchAddr_OK(use_pc_hi) =>
                 match translateAddr(use_pc_hi, Execute()) {
-                  TR_Failure(e) => F_Error(e, PC),
+                  TR_Failure(e, _) => F_Error(e, PC),
                   TR_Address(_, _, _) => F_Base(i)
               }
             }

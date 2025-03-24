@@ -39,31 +39,23 @@ function pmpAddrRange(cfg: Pmpcfg_ent, pmpaddr: xlenbits, prev_pmpaddr: xlenbits
 /* permission checks */
 
 val pmpCheckRWX: (Pmpcfg_ent, AccessType(ext_access_type)) -> bool
-function pmpCheckRWX(ent, acc) = {
+function pmpCheckRWX(ent, acc) =
   match acc {
-    Read(_)      => ent[R] == 0b1,
-    Write(_)     => ent[W] == 0b1,
-    ReadWrite(_) => ent[R] == 0b1 & ent[W] == 0b1,
-    Execute()    => ent[X] == 0b1
+    Read(_)         => ent[R] == 0b1,
+    Write(_)        => ent[W] == 0b1,
+    ReadWrite(_, _) => ent[R] == 0b1 & ent[W] == 0b1,
+    Execute()       => ent[X] == 0b1,
+    Cache(Zero)     => ent[W] == 0b1,
+    Cache(_)        => internal_error(__FILE__, __LINE__,
+                                      "Invalid CacheAccessType; Inval, Clean and Flush check Read/Write permissions."),
   }
-}
 
-// this needs to be called with the effective current privilege.
-val pmpCheckPerms: (Pmpcfg_ent, AccessType(ext_access_type), Privilege) -> bool
-function pmpCheckPerms(ent, acc, priv) = {
-  match priv {
-    Machine => if   pmpLocked(ent)
-               then pmpCheckRWX(ent, acc)
-               else true,
-    _       => pmpCheckRWX(ent, acc)
-  }
-}
 
 /* matching logic */
 
 enum pmpAddrMatch = {PMP_NoMatch, PMP_PartialMatch, PMP_Match}
 
-function pmpMatchAddr(addr: xlenbits, width: xlenbits, rng: pmp_addr_range_in_words) -> pmpAddrMatch = {
+function pmpMatchAddr(physaddr(addr): physaddr, width: xlenbits, rng: pmp_addr_range_in_words) -> pmpAddrMatch = {
   match rng {
     None()         => PMP_NoMatch,
     Some((lo, hi)) => {
@@ -89,13 +81,13 @@ function pmpMatchAddr(addr: xlenbits, width: xlenbits, rng: pmp_addr_range_in_wo
 
 enum pmpMatch = {PMP_Success, PMP_Continue, PMP_Fail}
 
-function pmpMatchEntry(addr: xlenbits, width: xlenbits, acc: AccessType(ext_access_type), priv: Privilege,
+function pmpMatchEntry(addr: physaddr, width: xlenbits, acc: AccessType(ext_access_type), priv: Privilege,
                        ent: Pmpcfg_ent, pmpaddr: xlenbits, prev_pmpaddr: xlenbits) -> pmpMatch = {
   let rng = pmpAddrRange(ent, pmpaddr, prev_pmpaddr);
   match pmpMatchAddr(addr, width, rng) {
     PMP_NoMatch      => PMP_Continue,
     PMP_PartialMatch => PMP_Fail,
-    PMP_Match        => if   pmpCheckPerms(ent, acc, priv)
+    PMP_Match        => if pmpCheckRWX(ent, acc) | (priv == Machine & not(pmpLocked(ent)))
                         then PMP_Success
                         else PMP_Fail
   }
@@ -105,13 +97,16 @@ function pmpMatchEntry(addr: xlenbits, width: xlenbits, acc: AccessType(ext_acce
 
 function accessToFault(acc : AccessType(ext_access_type)) -> ExceptionType =
   match acc {
-    Read(_)      => E_Load_Access_Fault(),
-    Write(_)     => E_SAMO_Access_Fault(),
-    ReadWrite(_) => E_SAMO_Access_Fault(),
-    Execute()    => E_Fetch_Access_Fault(),
+    Read(_)         => E_Load_Access_Fault(),
+    Write(_)        => E_SAMO_Access_Fault(),
+    ReadWrite(_, _) => E_SAMO_Access_Fault(),
+    Execute()       => E_Fetch_Access_Fault(),
+    Cache(Zero)     => E_SAMO_Access_Fault(),
+    Cache(_)        => internal_error(__FILE__, __LINE__,
+                                      "Invalid CacheAccessType; Inval, Clean and Flush check Read/Write permissions."),
   }
 
-function pmpCheck forall 'n, 'n > 0. (addr: xlenbits, width: int('n), acc: AccessType(ext_access_type), priv: Privilege)
+function pmpCheck forall 'n, 'n > 0. (addr: physaddr, width: int('n), acc: AccessType(ext_access_type), priv: Privilege)
                   -> option(ExceptionType) = {
   let width : xlenbits = to_bits(xlen, width);
 
@@ -126,7 +121,7 @@ function pmpCheck forall 'n, 'n > 0. (addr: xlenbits, width: int('n), acc: Acces
   if priv == Machine then None() else Some(accessToFault(acc))
 }
 
-function init_pmp() -> unit = {
+function reset_pmp() -> unit = {
   assert(
     sys_pmp_count() == 0 | sys_pmp_count() == 16 | sys_pmp_count() == 64,
     "sys_pmp_count() must be 0, 16, or 64"

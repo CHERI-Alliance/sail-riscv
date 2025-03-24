@@ -23,29 +23,7 @@ extern bool rv_enable_vext;
 extern bool rv_enable_bext;
 extern bool rv_enable_zicbom;
 extern bool rv_enable_zicboz;
-extern bool rv_enable_pbmt;
-extern bool rv_enable_sdext;
-extern bool rv_enable_sdtrig;
-extern bool rv_enable_smclic;
-extern bool rv_enable_smclicconfig;
-extern bool rv_enable_smclicshv;
-extern bool rv_enable_ssclic;
 extern bool rv_enable_sstc;
-extern bool rv_enable_sv32;
-extern bool rv_enable_sv39;
-extern bool rv_enable_sv48;
-extern bool rv_enable_sv57;
-extern bool rv_enable_svnapot;
-extern bool rv_enable_zba;
-extern bool rv_enable_zbb;
-extern bool rv_enable_zbc;
-extern bool rv_enable_zbs;
-extern bool rv_enable_zfh;
-extern bool rv_enable_zfhmin;
-extern bool rv_enable_zkn;
-extern bool rv_enable_zkr;
-extern bool rv_enable_zks;
-
 extern bool rv_enable_writable_misa;
 extern bool rv_enable_dirty_update;
 extern bool rv_enable_misaligned;
@@ -60,6 +38,8 @@ extern uint64_t rv_rom_base;
 extern uint64_t rv_rom_size;
 
 extern uint64_t rv_cache_block_size_exp;
+
+extern bool rv_vext_vl_use_ceil;
 
 // Provides entropy for the scalar cryptography extension.
 extern uint64_t rv_16_random_bits(void);

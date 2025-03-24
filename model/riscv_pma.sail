@@ -1,13 +1,6 @@
-/*=======================================================================================*/
-/*  This Sail RISC-V architecture model, comprising all files and                        */
-/*  directories except where otherwise noted is subject the BSD                          */
-/*  two-clause license in the LICENSE file.                                              */
-/*                                                                                       */
-/*  SPDX-License-Identifier: BSD-2-Clause                                                */
-/*=======================================================================================*/
-
-// This PMA implementation assumes they are constant. Dynamic PMAs
-// are allowed but there is no way to configure them in the spec.
+// Assumption behind implementation: PMAs cannot change between a
+// reserved load and store. This assumes PMAs never change during
+// execution, but this might not hold for hot pluggable devices.
 
 enum AtomicSupport = { AMONone, AMOSwap, AMOLogical, AMOArithmetic }
 enum Reservability = { RsrvNone, RsrvNonEventual, RsrvEventual }
@@ -50,68 +43,78 @@ struct PMA = {
   // If this is not set then capability stores/loads from this memory will
   // always store & load with the tag set to 0.
   taggable                         : bool,
+  // If this is set for a memory where taggable is false then stores of
+  // tagged capabilities to that memory cause an access fault. Otherwise
+  // they silently discard the tag.
+  taggableAccessFaults        : bool,
+  // Flags whether this memory supports CBO.zero. Note that main memory regions must
+  // have this set.
+  supportsCboZero                  : bool,
 }
 
 struct PMA_Region = {
-  base       : xlenbits,
-  size       : xlenbits,
+  base       : physaddr,
+  size       : physaddrbits,
   attributes : PMA,
 }
 
 // Get the first PMA that matches a given address range.
-function matching_pma(pmas : list(PMA_Region), addr : xlenbits, width : mem_access_width) -> option(PMA_Region) = {
+function matching_pma(pmas : list(PMA_Region), physaddr(addr) : physaddr, width : mem_access_width) -> option(PMA_Region) = {
   match pmas {
     [||] => None(),
     pma :: rest => {
-      if range_subset(addr, addr + width, pma.base, pma.base + pma.size)
+      if range_subset(addr, addr + width, physaddr_bits(pma.base), physaddr_bits(pma.base) + pma.size)
       then Some(pma)
-      else matching_pma(rest, addr, width)
+      else matching_pma(rest, physaddr(addr), width)
     },
   }
 }
 
 // Printing to a string.
-function pma_region_to_str(region : PMA_Region) -> string =
-  "base: " ^ bits_str(region.base) ^ " size: " ^ bits_str(region.size) ^
-  (if region.attributes.cacheable then " cacheable" else "") ^
-  (if region.attributes.coherent then " coherent" else "") ^
-  (if region.attributes.executable then " executable" else "") ^
-  (if region.attributes.readable then " readable" else "") ^
-  (if region.attributes.writable then " writable" else "") ^
-  (if region.attributes.readIdempotent then " read-idempotent" else "") ^
-  (if region.attributes.writeIdempotent then " write-idempotent" else "") ^
-  (if region.attributes.relaxed then " relaxed" else "") ^
-  (if region.attributes.misalignmentCausesAccessFault then " misalignmentCausesAccessFault" else "") ^
-  (if region.attributes.misalignmentCausesAlignmentFault then " misalignmentCausesAlignmentFault" else "") ^
-  " " ^ atomic_support_name(region.attributes.atomicSupport) ^
-  " " ^ reservability_name(region.attributes.reservability) ^
-  (if region.attributes.taggable then " taggable" else "")
+function pma_attributes_to_str(attr : PMA) -> string =
+  (if attr.cacheable then " cacheable" else "") ^
+  (if attr.coherent then " coherent" else "") ^
+  (if attr.executable then " executable" else "") ^
+  (if attr.readable then " readable" else "") ^
+  (if attr.writable then " writable" else "") ^
+  (if attr.readIdempotent then " read-idempotent" else "") ^
+  (if attr.writeIdempotent then " write-idempotent" else "") ^
+  (if attr.relaxed then " relaxed" else "") ^
+  (if attr.misalignmentCausesAccessFault then " misalignmentCausesAccessFault" else "") ^
+  (if attr.misalignmentCausesAlignmentFault then " misalignmentCausesAlignmentFault" else "") ^
+  " " ^ atomic_support_name(attr.atomicSupport) ^
+  " " ^ reservability_name(attr.reservability) ^
+  (if attr.taggable then " taggable" else "") ^
+  (if attr.taggableAccessFaults then " taggableAccessFaults" else "") ^
+  (if attr.supportsCboZero then " supportsCboZero" else "")
 
-overload to_str = {pma_region_to_str, atomic_support_name, reservability_name}
+function pma_region_to_str(region : PMA_Region) -> string =
+  "base: " ^ bits_str(physaddr_bits(region.base)) ^ " size: " ^ bits_str(region.size)
+    ^ pma_attributes_to_str(region.attributes)
+
+overload to_str = {pma_attributes_to_str, pma_region_to_str, atomic_support_name, reservability_name}
 
 // The list of PMAs. The behaviour is undefined if these overlap.
 register pma_regions : list(PMA_Region) = [||]
 
 
-function accessFaultFromAccessType (accTy : AccessType(ext_access_type)) -> ExceptionType = {
+function accessFaultFromAccessType (accTy : AccessType(ext_access_type)) -> ExceptionType =
   match accTy {
     Execute()  => E_Fetch_Access_Fault(),
     Read(Data) => E_Load_Access_Fault(),
     _          => E_SAMO_Access_Fault()
   }
-}
 
-function alignmentFaultFromAccessType(accTy : AccessType(ext_access_type)) -> ExceptionType = {
+function alignmentFaultFromAccessType(accTy : AccessType(ext_access_type)) -> ExceptionType =
   match accTy {
     Execute()  => E_Fetch_Addr_Align(),
     Read(Data) => E_Load_Addr_Align(),
     _          => E_SAMO_Addr_Align()
   }
-}
 
 // Return true if the memory is taggable. We don't need to worry about checking
 // the whole range since unaligned tagged reads/writes never happen.
-function is_taggable(paddr : xlenbits, width : mem_access_width) -> bool =
+function is_taggable(paddr : physaddr, width : mem_access_width) -> bool =
   match matching_pma(pma_regions, paddr, width) {
     None() => internal_error(__FILE__, __LINE__, "memory read/write in memory without PMAs; this should be impossible"),
     Some(struct { attributes, _ }) => attributes.taggable,

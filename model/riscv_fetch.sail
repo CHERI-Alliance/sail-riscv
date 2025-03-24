@@ -19,18 +19,19 @@ function fetch() -> FetchResult =
     Ext_FetchAddr_Error(e)     => F_Error(e, PC),
     Ext_FetchAddr_Ext_Error(e) => F_Ext_Error(e),
     Ext_FetchAddr_OK(use_pc)   => {
-      if   (use_pc[0] != bitzero | (use_pc[1] != bitzero & not(extensionEnabled(Ext_Zca))))
+      let use_pc_bits = virtaddr_bits(use_pc);
+      if   (use_pc_bits[0] != bitzero | (use_pc_bits[1] != bitzero & not(extensionEnabled(Ext_Zca))))
       then F_Error(E_Fetch_Addr_Align(), PC)
       else match translateAddr(use_pc, Execute()) {
-        TR_Failure(e)     => F_Error(e, PC),
+        TR_Failure(e, _) => F_Error(e, PC),
         TR_Address(ppclo, pbmt, _) => {
           /* split instruction fetch into 16-bit granules to handle RVC, as
            * well as to generate precise fault addresses in any fetch
            * exceptions.
            */
           match ext_fetch_mem_read_lo(ppclo, pbmt) {
-            MemException(e) => F_Error(e, PC),
-            MemValue(ilo)   => {
+            Err(e)  => F_Error(e, PC),
+            Ok(ilo) => {
               if   isRVC(ilo)
               then F_RVC(ilo)
               else {
@@ -41,11 +42,11 @@ function fetch() -> FetchResult =
                   Ext_FetchAddr_Ext_Error(e)  => F_Ext_Error(e),
                   Ext_FetchAddr_OK(use_pc_hi) => {
                     match translateAddr(use_pc_hi, Execute()) {
-                      TR_Failure(e)     => F_Error(e, PC_hi),
+                      TR_Failure(e, _) => F_Error(e, PC_hi),
                       TR_Address(ppchi, pbmt, _) => {
                         match ext_fetch_mem_read_hi(ppchi, pbmt) {
-                          MemException(e) => F_Error(e, PC_hi),
-                          MemValue(ihi)   => F_Base(append(ihi, ilo))
+                          Err(e)  => F_Error(e, PC_hi),
+                          Ok(ihi) => F_Base(append(ihi, ilo))
                         }
                       }
                     }

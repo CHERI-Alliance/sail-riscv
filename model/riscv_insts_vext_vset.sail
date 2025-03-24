@@ -49,10 +49,10 @@ mapping maybe_ma_flag : string <-> bits(1) = {
 }
 
 function get_avl(rd : regidx, rs1 : regidx) -> option(nat) = {
-  if (rs1 != 0b00000) then { /* normal stripmining */
+  if (rs1 != Regidx(0b00000)) then { /* normal stripmining */
     let rs1_val = X(rs1);
     Some(unsigned(rs1_val));
-  } else if (rd != 0b00000) then { /* set vl to VLMAX */
+  } else if (rd != Regidx(0b00000)) then { /* set vl to VLMAX */
     Some(unsigned(ones(xlen)));
   } else { /* keep existing vl */
     None()
@@ -62,15 +62,36 @@ function get_avl(rd : regidx, rs1 : regidx) -> option(nat) = {
 function writeback_vset(vtype_new: xlenbits, vl_new : xlenbits) -> unit = {
   vtype.bits = vtype_new;
   vl = vl_new;
+  set_vstart(zeros());
 
   if get_config_print_reg() then
     print_reg("CSR vtype <- " ^ BitStr(vtype.bits));
+  track_writeCSR(csr_name_map("vtype"));
+
   if get_config_print_reg() then
     print_reg("CSR vl <- " ^ BitStr(vl));
-  write_vstart(0);
+  track_writeCSR(csr_name_map("vl"));
+
   if get_config_print_reg() then
     print_reg("CSR vstart <- " ^ BitStr(vstart));
-  dirty_v_context();
+  // vstart tracked in set_vstart() already.
+}
+
+val sys_vext_vl_use_ceil = pure "sys_vext_vl_use_ceil" : unit -> bool
+
+function calculate_new_vl(AVL : int, VLMAX : int) -> xlenbits = {
+  // See "Constraints on Setting vl" in the vector spec.
+  let new_vl =
+    if AVL <= VLMAX then AVL
+    else if AVL < 2 * VLMAX then {
+      // If VLMAX < AVL < 2 * VLMAX then we can use any value
+      // such that ceil(AVL / 2) <= vl <= VLMAX. Here we provide
+      // two options: ceil(AVL / 2) or VLMAX.
+      if sys_vext_vl_use_ceil() then (AVL + 1) / 2 else VLMAX
+    }
+    else VLMAX;
+
+  to_bits(xlen, new_vl)
 }
 
 function writeback_vill() -> unit = writeback_vset(0b1 @ zeros(xlen - 1), zeros())
@@ -114,13 +135,8 @@ function process_vset(vtype_bits_new : xlenbits, AVL : option(nat), rd : regidx)
 
   let VLMAX = 2 ^ (VLEN_pow + LMUL_pow_new - SEW_pow_new);
 
-  /* set vl according to VLMAX and AVL */
-  let vl_new = if avl <= VLMAX then to_bits(xlen, avl)
-        else if avl < 2 * VLMAX then to_bits(xlen, VLMAX)
-        else to_bits(xlen, VLMAX);
-  /* Note: ceil(AVL / 2) <= vl <= VLMAX when VLMAX < AVL < (2 * VLMAX)
-    * TODO: configuration support for either using ceil(AVL / 2) or VLMAX
-    */
+  let vl_new = calculate_new_vl(avl, VLMAX);
+
   X(rd) = vl_new;
 
   writeback_vset(vtype_new.bits, vl_new);
@@ -130,8 +146,8 @@ function process_vset(vtype_bits_new : xlenbits, AVL : option(nat), rd : regidx)
 /* ****************************** vsetvl ******************************* */
 union clause ast = VSETVL_TYPE : (regidx, regidx, regidx)
 
-mapping clause encdec = VSETVL_TYPE(rs2, rs1, rd) if extensionEnabled(Ext_V)
-  <-> 0b1000000 @ rs2 @ rs1 @ 0b111 @ rd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VSETVL_TYPE(rs2, rs1, rd)                                        if extensionEnabled(Ext_V)
+  <-> 0b1000000 @ encdec_reg(rs2) @ encdec_reg(rs1) @ 0b111 @ encdec_reg(rd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute VSETVL_TYPE(rs2, rs1, rd) = process_vset(X(rs2), get_avl(rd, rs1), rd)
 
@@ -141,8 +157,8 @@ mapping clause assembly = VSETVL_TYPE(rs2, rs1, rd)
 /* ****************************** vsetvli ******************************* */
 union clause ast = VSETVLI_TYPE : (bits(1), bits(1), bits(3), bits(3), regidx, regidx)
 
-mapping clause encdec = VSETVLI_TYPE(ma, ta, sew, lmul, rs1, rd) if extensionEnabled(Ext_V)
-  <-> 0b0000 @ ma @ ta @ sew @ lmul @ rs1 @ 0b111 @ rd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VSETVLI_TYPE(ma, ta, sew, lmul, rs1, rd)                           if extensionEnabled(Ext_V)
+  <-> 0b0000 @ ma @ ta @ sew @ lmul @ encdec_reg(rs1) @ 0b111 @ encdec_reg(rd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute VSETVLI_TYPE(ma, ta, sew, lmul, rs1, rd) =
   process_vset(0b0 @ zeros(xlen - 9) @ ma @ ta @ sew @ lmul, get_avl(rd, rs1), rd)
@@ -151,10 +167,10 @@ mapping clause assembly = VSETVLI_TYPE(ma, ta, sew, lmul, rs1, rd)
   <-> "vsetvli" ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ sew_flag(sew) ^ maybe_lmul_flag(lmul) ^ maybe_ta_flag(ta) ^ maybe_ma_flag(ma)
 
 /* ********************************* vsetivli ************************************ */
-union clause ast = VSETIVLI_TYPE : ( bits(1), bits(1), bits(3), bits(3), regidx, regidx)
+union clause ast = VSETIVLI_TYPE : ( bits(1), bits(1), bits(3), bits(3), bits(5), regidx)
 
-mapping clause encdec = VSETIVLI_TYPE(ma, ta, sew, lmul, uimm, rd) if extensionEnabled(Ext_V)
-  <-> 0b1100 @ ma @ ta @ sew @ lmul @ uimm @ 0b111 @ rd @ 0b1010111 if extensionEnabled(Ext_V)
+mapping clause encdec = VSETIVLI_TYPE(ma, ta, sew, lmul, uimm, rd)              if extensionEnabled(Ext_V)
+  <-> 0b1100 @ ma @ ta @ sew @ lmul @ uimm @ 0b111 @ encdec_reg(rd) @ 0b1010111 if extensionEnabled(Ext_V)
 
 function clause execute VSETIVLI_TYPE(ma, ta, sew, lmul, uimm, rd) =
   process_vset(0b0 @ zeros(xlen - 9) @ ma @ ta @ sew @ lmul, Some(unsigned(uimm)), rd)

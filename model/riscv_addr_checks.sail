@@ -6,9 +6,6 @@
 /*  SPDX-License-Identifier: BSD-2-Clause                                                */
 /*=======================================================================================*/
 
-/* default fetch address checks */
-
-type ext_fetch_addr_error = unit
 
 /* Since fetch is done in granules, the check function gets two arguments:
  * start_pc: the PC at the start of the current fetch sequence
@@ -18,7 +15,7 @@ type ext_fetch_addr_error = unit
  *           any address translation errors are reported for pc, not the returned value.
  */
 function ext_fetch_check_pc(start_pc : xlenbits, pc : xlenbits) -> Ext_FetchAddr_Check(ext_fetch_addr_error) =
-  Ext_FetchAddr_OK(pc)
+  Ext_FetchAddr_OK(virtaddr(pc))
 
 function ext_handle_fetch_check_error(err : ext_fetch_addr_error) -> unit =
   ()
@@ -38,11 +35,11 @@ type ext_control_addr_error = unit
 
 /* the control address is derived from a non-PC register, e.g. in JALR */
 function ext_control_check_addr(pc : xlenbits) -> Ext_ControlAddr_Check(ext_control_addr_error) =
-  Ext_ControlAddr_OK(convertInvalidAddr(pc))
+  Ext_ControlAddr_OK(virtaddr(convertInvalidAddr(pc)))
 
 /* the control address is derived from the PC register, e.g. in JAL */
 function ext_control_check_pc(pc : xlenbits) -> Ext_ControlAddr_Check(ext_control_addr_error) =
-  Ext_ControlAddr_OK(convertInvalidAddr(pc))
+  Ext_ControlAddr_OK(virtaddr(convertInvalidAddr(pc)))
 
 function ext_handle_control_check_error(err : ext_control_addr_error) -> unit =
   ()
@@ -55,9 +52,9 @@ type ext_data_addr_error = unit
 /* Default data addr is just base register + immediate offset (may be zero).
    Extensions might override and add additional checks. */
 function ext_data_get_addr(base : regidx, offset : xlenbits, acc : AccessType(ext_access_type), width : mem_access_width)
-         -> (xlenbits, Ext_DataAddr_Check(ext_data_addr_error)) =
-  let addr = X(base) + offset in
-  (addr, Ext_DataAddr_OK())
+         -> Ext_DataAddr_Check(ext_data_addr_error) =
+  let addr = virtaddr(X(base) + offset) in
+  Ext_DataAddr_OK(addr)
 
 function ext_handle_data_check_error(err : ext_data_addr_error) -> unit =
   ()
@@ -68,3 +65,6 @@ function ext_check_phys_mem_read (access_type, paddr, size, aquire, release, res
 
 function ext_check_phys_mem_write(write_kind, paddr, size, data, metadata) =
   Ext_PhysAddr_OK ()
+
+/* Default implementation of this hook is fully permissive */
+function ext_pma_check (access_type : AccessType(ext_access_type), attributes : PMA) -> bool = true

@@ -7,37 +7,11 @@ function get_mtvec() -> xlenbits = mtvec.bits
 function get_stvec() -> xlenbits = read_stvec_utvec(stvec.bits)
 
 function set_mtvec(value : xlenbits) -> unit = {
-  let was_clic = inSmclicMode();
   mtvec = legalize_tvec(mtvec, convertInvalidAddr(value));
-
-  // For backwards compatibility in systems supporting both CLINT and CLIC modes,
-  // when switching to CLINT mode the new CLIC xcause state field (xpil) is zeroed.
-  //
-  // Also xinhv. See https://github.com/riscv/riscv-fast-interrupt/issues/418
-
-  // TODO (CLIC): The spec also says these two conflicting things:
-  //
-  // 1. The other new CLIC xcause fields, xpp and xpie, appear as zero in the xcause
-  //    CSR but the corresponding state bits in the mstatus register are not cleared.
-  // 2. The mcause.mpp and mcause.mpie fields mirror the mstatus.mpp and mstatus.mpie
-  //    fields, and are aliased into mcause to reduce context save/restore code.
-  //
-  // It seems like they have tried to fix this in the latest version of the
-  // spec by adding extra vagueness.
-  //
-  // https://github.com/riscv/riscv-fast-interrupt/issues/405
-  //
-  if was_clic & not(inSmclicMode()) then {
-    mcause[Xpil] = zeros();
-    scause[Xpil] = zeros();
-    mcause[Xinhv] = zeros();
-    scause[Xinhv] = zeros();
-  };
 }
 
 function set_stvec(value : xlenbits) -> unit = {
   stvec = legalize_tvec(stvec, convertInvalidAddr(value));
-  // TODO (CLIC): Need to set mpil etc.
 }
 
 /******************************* xSCRATCH[C] *******************************/
@@ -82,4 +56,17 @@ function set_senvcfg(v : xlenbits) -> unit = {
 
 function set_mseccfg(v : bits(64)) -> unit = {
   mseccfg = legalize_mseccfg(mseccfg, v);
+}
+
+/******************************* xTVT[C] *******************************/
+
+function get_mtvt() -> xlenbits = mtvt
+function get_stvt() -> xlenbits = stvt
+
+function set_mtvt(value : xlenbits) -> unit = {
+  mtvt = legalize_tvt(mtvt, convertInvalidAddr(value))
+}
+
+function set_stvt(value : xlenbits) -> unit = {
+  stvt = legalize_tvt(stvt, convertInvalidAddr(value));
 }
