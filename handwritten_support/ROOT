@@ -1,4 +1,4 @@
-session "Sail-RISC-V" = "Sail" +
+session "Sail-CHERI-RISC-V" = "Sail" +
   options [document = false]
   theories
     "Riscv_lemmas"
