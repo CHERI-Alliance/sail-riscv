@@ -204,6 +204,7 @@ function trap_handler(del_priv : Privilege, intr : bool, c : exc_code, pc : xlen
       mstatus[MPIE] = mstatus[MIE];
       mstatus[MIE]  = 0b0;
       mstatus[MPP]  = privLevel_to_bits(cur_privilege());
+      mtval         = tval(info);
       set_mepc(pc);
 
       set_cur_privilege(del_priv);
