@@ -9,9 +9,15 @@
 /* ****************************************************************** */
 union clause instruction = ZBA_RTYPEUW_capmode : (regidx, regidx, regidx, shamt_zba)
 
-mapping clause encdec_capmode = ZBA_RTYPEUW_capmode(cs2, rs1, cd, shamt)
-  <-> 0b0000100 @ encdec_reg(cs2) @ encdec_reg(rs1) @ shamt @ 0b0 @ encdec_reg(cd) @ 0b0111011
+// add.uw
+mapping clause encdec_capmode = ZBA_RTYPEUW_capmode(cs2, rs1, cd, 0b00)
+  <-> 0b0000100 @ encdec_reg(cs2) @ encdec_reg(rs1) @ 0b00 @ 0b0 @ encdec_reg(cd) @ 0b0111011
   when currentlyEnabled(Ext_Zba) & xlen == 64
+
+// sh#add.uw
+mapping clause encdec_capmode = ZBA_RTYPEUW_capmode(cs2, rs1, cd, shamt)
+  <-> 0b0010000 @ encdec_reg(cs2) @ encdec_reg(rs1) @ shamt @ 0b0 @ encdec_reg(cd) @ 0b0111011
+  when currentlyEnabled(Ext_Zba) & xlen == 64 & shamt != 0b00
 
 mapping clause assembly = ZBA_RTYPEUW_capmode(cs2, rs1, cd, shamt)
   <-> zba_rtypeuw_mnemonic(shamt) ^ spc() ^ cap_reg_name(cd) ^ sep() ^ reg_name(rs1) ^ sep() ^ cap_reg_name(cs2)
