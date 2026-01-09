@@ -712,7 +712,7 @@ function clause execute (LoadResCap(cd, rs1_cs1, aq, rl)) = {
       match translateAddr(vaddr, Read(if canC(auth_val) then Tagged else Data)) {
         TR_Failure(e, ext_ptw) => { handle_translate_exception(vaddr, e, ext_ptw); RETIRE_FAIL },
         TR_Address(addr, pbmt, ext_ptw) => {
-          let c = mem_read_cap(addr, pbmt, aq, aq & rl, false);
+          let c = mem_read_cap(addr, pbmt, aq, aq & rl, true);
           match c {
             Ok(v) => {
               if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
@@ -895,10 +895,10 @@ function clause execute StoreCondCap(rd, cs2, rs1_cs1, aq, rl) = {
             cancel_reservation();
             RETIRE_SUCCESS
           } else {
-            match mem_write_ea_cap(addr, aq & rl, rl, false) {
+            match mem_write_ea_cap(addr, aq & rl, rl, true) {
               Err(e) => { handle_mem_exception(vaddr, e); RETIRE_FAIL },
               Ok(_)  => {
-                match mem_write_cap(addr, pbmt, cs2_val, aq & rl, rl, false) {
+                match mem_write_cap(addr, pbmt, cs2_val, aq & rl, rl, true) {
                   Ok(true) => {
                     X(rd) = zero_extend(0b0);
                     cancel_reservation();
