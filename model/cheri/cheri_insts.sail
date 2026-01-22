@@ -712,7 +712,7 @@ function clause execute (LoadResCap(cd, rs1_cs1, aq, rl)) = {
       match translateAddr(vaddr, Read(if canC(auth_val) then Tagged else Data)) {
         TR_Failure(e, ext_ptw) => { handle_translate_exception(vaddr, e, ext_ptw); RETIRE_FAIL },
         TR_Address(addr, pbmt, ext_ptw) => {
-          let c = mem_read_cap(addr, pbmt, aq, aq & rl, true);
+          let c = mem_read_cap(Read(Data), addr, pbmt, aq, aq & rl, true);
           match c {
             Ok(v) => {
               if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
@@ -776,7 +776,7 @@ function clause execute LoadCapImm(cd, rs1_cs1, imm) = {
         TR_Address(addr, pbmt, ext_ptw) => {
           let aq = false;
           let rl = false;
-          match mem_read_cap(addr, pbmt, aq, aq & rl, false) {
+          match mem_read_cap(Read(Data), addr, pbmt, aq, aq & rl, false) {
             Ok(v) => {
               if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
                 handle_translate_exception(vaddr, E_Load_Page_Fault(), { ext_ptw with cheri_page_fault = PageFault_Cheri });
@@ -950,13 +950,17 @@ function clause execute AMOSwapCap(cd, cs2, rs1_cs1, aq, rl) = {
       let cs2_val = clearTagIf(cs2_val, not(canC(auth_val)));
       let cs2_val = legalizeStoredPermissions(cs2_val, auth_val);
 
-      match translateAddr(vaddr, ReadWrite(if canC(auth_val) then Tagged else Data, if cs2_val.tag then Tagged else Data)) {
+      // If we don't have C capability then the tag will always be cleared and
+      // it is treated as an untagged access.
+      let typ = ReadWrite(if canC(auth_val) then Tagged else Data, if cs2_val.tag then Tagged else Data);
+
+      match translateAddr(vaddr, typ) {
         TR_Failure(e, ext_ptw) => { handle_translate_exception(vaddr, e, ext_ptw); RETIRE_FAIL },
         TR_Address(addr, pbmt, ext_ptw) => {
           match mem_write_ea_cap(addr, aq & rl, rl, false) {
             Err(e) => { handle_mem_exception(vaddr, e); RETIRE_FAIL },
             Ok(_)  => {
-              match mem_read_cap(addr, pbmt, aq, aq & rl, false) {
+              match mem_read_cap(typ, addr, pbmt, aq, aq & rl, false) {
                 Ok(v) => {
                   match mem_write_cap(addr, pbmt, cs2_val, aq & rl, rl, false) {
                     Ok(_) => {
