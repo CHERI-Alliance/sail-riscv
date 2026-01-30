@@ -138,7 +138,13 @@ function vmem_write_addr(vaddr, width, data, acc, aq, rl, res) = {
       Ok(paddr, pbmt, _) => {
         /* If res is true, the load should be aligned, and this loop should only execute once */
         if res & not(match_reservation(bits_of(paddr))) then {
-          write_success = false
+          // Check PMA and PMP access controls before reporting the
+          // cancelled reservation.
+          let effPriv = effectivePrivilege(acc, mstatus, cur_privilege());
+          match phys_access_check(acc, effPriv, pbmt, paddr, bytes, true) {
+            Some(e) => return Err(Memory_Exception(Virtaddr(vaddr), e)),
+            None()  => write_success = false,
+          }
         } else match mem_write_ea(paddr, bytes, aq, rl, res) {
           Err(e) => return Err(Memory_Exception(Virtaddr(vaddr), e)),
 
@@ -251,7 +257,7 @@ function vmem_write(rs_addr, offset, width, data, acc, aq, rl, res) = {
     Ext_DataAddr_Error(e)  => return Err(Ext_DataAddr_Check_Failure(e)),
   };
 
-  if   check_misaligned(vaddr, width)
+  if   (res & not(is_aligned_addr(vaddr, width))) | check_misaligned(vaddr, width)
   then return Err(Memory_Exception(vaddr, E_SAMO_Addr_Align()));
 
   vmem_write_addr(vaddr, width, data, acc, aq, rl, res)
