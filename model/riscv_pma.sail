@@ -101,14 +101,14 @@ register pma_regions : list(PMA_Region) = [||]
 function accessFaultFromAccessType (accTy : AccessType(ext_access_type)) -> ExceptionType =
   match accTy {
     Execute()  => E_Fetch_Access_Fault(),
-    Read(Data) => E_Load_Access_Fault(),
+    Read(_) => E_Load_Access_Fault(),
     _          => E_SAMO_Access_Fault()
   }
 
 function alignmentFaultFromAccessType(accTy : AccessType(ext_access_type)) -> ExceptionType =
   match accTy {
     Execute()  => E_Fetch_Addr_Align(),
-    Read(Data) => E_Load_Addr_Align(),
+    Read(_) => E_Load_Addr_Align(),
     _          => E_SAMO_Addr_Align()
   }
 
