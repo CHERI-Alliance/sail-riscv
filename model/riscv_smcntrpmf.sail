@@ -33,10 +33,10 @@ function clause is_CSR_defined(0x721) = extensionEnabled(Ext_Smcntrpmf) & xlen =
 function clause is_CSR_defined(0x322) = extensionEnabled(Ext_Smcntrpmf) // minstretcfg
 function clause is_CSR_defined(0x722) = extensionEnabled(Ext_Smcntrpmf) & xlen == 32 // minstretcfgh
 
-function clause read_CSR(0x321, _) = mcyclecfg.bits[xlen - 1 .. 0]
-function clause read_CSR((0x721, _) if xlen == 32) = mcyclecfg.bits[63 .. 32]
-function clause read_CSR(0x322, _) = minstretcfg.bits[xlen - 1 .. 0]
-function clause read_CSR((0x722, _) if xlen == 32) = minstretcfg.bits[63 .. 32]
+function clause read_CSR(0x321) = mcyclecfg.bits[xlen - 1 .. 0]
+function clause read_CSR(0x721 if xlen == 32) = mcyclecfg.bits[63 .. 32]
+function clause read_CSR(0x322) = minstretcfg.bits[xlen - 1 .. 0]
+function clause read_CSR(0x722 if xlen == 32) = minstretcfg.bits[63 .. 32]
 
 function clause write_CSR((0x321, value) if xlen == 64) = { mcyclecfg = legalize_smcntrpmf(mcyclecfg, value); mcyclecfg.bits }
 function clause write_CSR((0x321, value) if xlen == 32) = { mcyclecfg = legalize_smcntrpmf(mcyclecfg, mcyclecfg.bits[63 .. 32] @ value); mcyclecfg.bits[xlen - 1 .. 0] }

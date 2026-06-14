@@ -34,13 +34,13 @@ function clause is_CSR_defined (0xC20) = extensionEnabled(Ext_V) // vl
 function clause is_CSR_defined (0xC21) = extensionEnabled(Ext_V) // vtype
 function clause is_CSR_defined (0xC22) = extensionEnabled(Ext_V) // vlenb
 
-function clause read_CSR(0x008, _) = zero_extend(vstart)
-function clause read_CSR(0x009, _) = zero_extend(vcsr[vxsat])
-function clause read_CSR(0x00A, _) = zero_extend(vcsr[vxrm])
-function clause read_CSR(0x00F, _) = zero_extend(vcsr.bits)
-function clause read_CSR(0xC20, _) = vl
-function clause read_CSR(0xC21, _) = vtype.bits
-function clause read_CSR(0xC22, _) = get_vlenb()
+function clause read_CSR(0x008) = zero_extend(vstart)
+function clause read_CSR(0x009) = zero_extend(vcsr[vxsat])
+function clause read_CSR(0x00A) = zero_extend(vcsr[vxrm])
+function clause read_CSR(0x00F) = zero_extend(vcsr.bits)
+function clause read_CSR(0xC20) = vl
+function clause read_CSR(0xC21) = vtype.bits
+function clause read_CSR(0xC22) = get_vlenb()
 
 function clause write_CSR(0x008, value) = { set_vstart(value[15 .. 0]); zero_extend(vstart) }
 function clause write_CSR(0x009, value) = { ext_write_vcsr (vcsr[vxrm], value[0 .. 0]); zero_extend(vcsr[vxsat]) }

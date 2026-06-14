@@ -44,10 +44,10 @@ function clause is_CSR_defined(0x141) = extensionEnabled(Ext_S) // sepc
 function clause is_CSR_defined(0x305) = true // mtvec
 function clause is_CSR_defined(0x341) = true // mepc
 
-function clause read_CSR(0x105, _) = get_stvec()
-function clause read_CSR(0x141, _) = get_sepc()
-function clause read_CSR(0x305, _) = get_mtvec()
-function clause read_CSR(0x341, _) = get_mepc()
+function clause read_CSR(0x105) = get_stvec()
+function clause read_CSR(0x141) = get_sepc()
+function clause read_CSR(0x305) = get_mtvec()
+function clause read_CSR(0x341) = get_mepc()
 
 function clause write_CSR(0x105, value) = { set_stvec(value); get_stvec() }
 function clause write_CSR(0x141, value) = { set_sepc(value); get_sepc() }

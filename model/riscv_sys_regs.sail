@@ -181,7 +181,7 @@ function legalize_misa(m : Misa, v : xlenbits) -> Misa = {
 
 mapping clause csr_name_map = 0x301  <-> "misa"
 function clause is_CSR_defined(0x301) = true // misa
-function clause read_CSR(0x301, _) = misa.bits
+function clause read_CSR(0x301) = misa.bits
 function clause write_CSR(0x301, value) = { misa = legalize_misa(misa, value); misa.bits }
 
 // Are user and supervisor mode supported by the hardware?
@@ -314,8 +314,8 @@ mapping clause csr_name_map = 0x300  <-> "mstatus"
 function clause is_CSR_defined(0x300) = true // mstatus
 function clause is_CSR_defined(0x310) = xlen == 32 // mstatush
 
-function clause read_CSR(0x300, _) = mstatus.bits[xlen - 1 .. 0]
-function clause read_CSR((0x310, _) if xlen == 32) = mstatus.bits[63 .. 32]
+function clause read_CSR(0x300) = mstatus.bits[xlen - 1 .. 0]
+function clause read_CSR(0x310 if xlen == 32) = mstatus.bits[63 .. 32]
 
 function clause write_CSR((0x300, value) if xlen == 64) = { mstatus = legalize_mstatus(mstatus, value); mstatus.bits }
 function clause write_CSR((0x300, value) if xlen == 32) = { mstatus = legalize_mstatus(mstatus, mstatus.bits[63 .. 32] @ value); mstatus.bits[31 .. 0] }
@@ -346,8 +346,8 @@ mapping clause csr_name_map = 0x757  <-> "mseccfgh"
 function clause is_CSR_defined(0x747) = true // mseccfg
 function clause is_CSR_defined(0x757) = xlen == 32 // mseccfgh
 
-function clause read_CSR(0x747, _) = mseccfg.bits[xlen - 1 .. 0]
-function clause read_CSR((0x757, _) if xlen == 32) = mseccfg.bits[63 .. 32]
+function clause read_CSR(0x747) = mseccfg.bits[xlen - 1 .. 0]
+function clause read_CSR(0x757 if xlen == 32) = mseccfg.bits[63 .. 32]
 
 val set_mseccfg : (bits(64)) -> unit
 
@@ -367,9 +367,9 @@ function clause is_CSR_defined(0x30A) = extensionEnabled(Ext_U) // menvcfg
 function clause is_CSR_defined(0x31A) = extensionEnabled(Ext_U) & (xlen == 32) // menvcfgh
 function clause is_CSR_defined(0x10A) = extensionEnabled(Ext_S) // senvcfg
 
-function clause read_CSR(0x30A, _) = menvcfg.bits[xlen - 1 .. 0]
-function clause read_CSR((0x31A, _) if xlen == 32) = menvcfg.bits[63 .. 32]
-function clause read_CSR(0x10A, _) = senvcfg.bits[xlen - 1 .. 0]
+function clause read_CSR(0x30A) = menvcfg.bits[xlen - 1 .. 0]
+function clause read_CSR(0x31A if xlen == 32) = menvcfg.bits[63 .. 32]
+function clause read_CSR(0x10A) = senvcfg.bits[xlen - 1 .. 0]
 
 val set_menvcfg : (bits(64)) -> unit
 val set_senvcfg : (xlenbits) -> unit
@@ -491,11 +491,11 @@ function clause is_CSR_defined(0x302) = extensionEnabled(Ext_S) // medeleg
 function clause is_CSR_defined(0x312) = extensionEnabled(Ext_S) & xlen == 32 // medelegh
 function clause is_CSR_defined(0x303) = extensionEnabled(Ext_S) // mideleg
 
-function clause read_CSR(0x304, _) = mie.bits
-function clause read_CSR(0x344, _) = mip.bits
-function clause read_CSR(0x302, _) = medeleg.bits[xlen - 1 .. 0]
-function clause read_CSR((0x312, _) if xlen == 32) = medeleg.bits[63 .. 32]
-function clause read_CSR(0x303, _) = mideleg.bits
+function clause read_CSR(0x304) = mie.bits
+function clause read_CSR(0x344) = mip.bits
+function clause read_CSR(0x302) = medeleg.bits[xlen - 1 .. 0]
+function clause read_CSR(0x312 if xlen == 32) = medeleg.bits[63 .. 32]
+function clause read_CSR(0x303) = mideleg.bits
 
 function clause write_CSR(0x304, value) = { mie = legalize_mie(mie, value); mie.bits }
 function clause write_CSR(0x344, value) = { mip = legalize_mip(mip, value); mip.bits }
@@ -555,7 +555,7 @@ function set_xcause(priv : Privilege, value : xlenbits) -> unit = {
 
 mapping clause csr_name_map = 0x342  <-> "mcause"
 function clause is_CSR_defined(0x342) = true // mcause
-function clause read_CSR(0x342, _) = get_xcause(Machine).bits
+function clause read_CSR(0x342) = get_xcause(Machine).bits
 function clause write_CSR(0x342, value) = { set_xcause(Machine, value); get_xcause(Machine).bits }
 
 /* Interpreting the trap-vector address */
@@ -615,8 +615,8 @@ function clause is_CSR_defined(0x340) = true // mscratch
 val get_mscratch : (unit) -> xlenbits
 val set_mscratch : (xlenbits) -> unit
 
-function clause read_CSR(0x343, _) = mtval
-function clause read_CSR(0x340, _) = get_mscratch()
+function clause read_CSR(0x343) = mtval
+function clause read_CSR(0x340) = get_mscratch()
 
 function clause write_CSR(0x343, value) = { mtval = convertInvalidAddr(value); mtval }
 function clause write_CSR(0x340, value) = { set_mscratch(value); get_mscratch() }
@@ -639,7 +639,7 @@ function legalize_scounteren(c : Counteren, v : xlenbits) -> Counteren = {
 register scounteren : Counteren
 mapping clause csr_name_map = 0x106  <-> "scounteren"
 function clause is_CSR_defined(0x106) = extensionEnabled(Ext_S) // scounteren
-function clause read_CSR(0x106, _) = zero_extend(scounteren.bits)
+function clause read_CSR(0x106) = zero_extend(scounteren.bits)
 function clause write_CSR(0x106, value) = { scounteren = legalize_scounteren(scounteren, value); zero_extend(scounteren.bits) }
 
 // mcounteren
@@ -651,7 +651,7 @@ function legalize_mcounteren(c : Counteren, v : xlenbits) -> Counteren = {
 register mcounteren : Counteren
 mapping clause csr_name_map = 0x306  <-> "mcounteren"
 function clause is_CSR_defined(0x306) = extensionEnabled(Ext_U) // mcounteren
-function clause read_CSR(0x306, _) = zero_extend(mcounteren.bits)
+function clause read_CSR(0x306) = zero_extend(mcounteren.bits)
 function clause write_CSR(0x306, value) = { mcounteren = legalize_mcounteren(mcounteren, value); zero_extend(mcounteren.bits) }
 
 // mcountinhibit
@@ -673,7 +673,7 @@ function legalize_mcountinhibit(c : Counterin, v : xlenbits) -> Counterin = {
 
 mapping clause csr_name_map = 0x320  <-> "mcountinhibit"
 function clause is_CSR_defined(0x320) = true // mcountinhibit
-function clause read_CSR(0x320, _) = zero_extend(get_countinhibit().bits)
+function clause read_CSR(0x320) = zero_extend(get_countinhibit().bits)
 function clause write_CSR(0x320, value) = { mcountinhibit = legalize_mcountinhibit(mcountinhibit, value); zero_extend(get_countinhibit().bits) }
 
 register mcycle : bits(64)
@@ -742,11 +742,11 @@ function clause is_CSR_defined(0xf13) = true // mimpid
 function clause is_CSR_defined(0xf14) = true // mhartid
 function clause is_CSR_defined(0xf15) = true // mconfigptr
 
-function clause read_CSR(0xF11, _) = zero_extend(mvendorid)
-function clause read_CSR(0xF12, _) = marchid
-function clause read_CSR(0xF13, _) = mimpid
-function clause read_CSR(0xF14, _) = mhartid
-function clause read_CSR(0xF15, _) = mconfigptr
+function clause read_CSR(0xF11) = zero_extend(mvendorid)
+function clause read_CSR(0xF12) = marchid
+function clause read_CSR(0xF13) = mimpid
+function clause read_CSR(0xF14) = mhartid
+function clause read_CSR(0xF15) = mconfigptr
 
 /* S-mode registers */
 
@@ -817,7 +817,7 @@ function set_xstatus(priv : Privilege, xstatus : bits(64)) -> unit = {
 
 mapping clause csr_name_map = 0x100  <-> "sstatus"
 function clause is_CSR_defined(0x100) = extensionEnabled(Ext_S) // sstatus
-function clause read_CSR(0x100, _) = lower_mstatus(mstatus).bits[xlen - 1 .. 0]
+function clause read_CSR(0x100) = lower_mstatus(mstatus).bits[xlen - 1 .. 0]
 function clause write_CSR(0x100, value) = { mstatus = legalize_sstatus(mstatus, zero_extend(value)); mstatus.bits[xlen - 1 .. 0] }
 
 
@@ -866,7 +866,7 @@ function lift_sip(o : Minterrupts, d : Minterrupts, s : Sinterrupts) -> Minterru
 
 mapping clause csr_name_map = 0x144  <-> "sip"
 function clause is_CSR_defined(0x144) = extensionEnabled(Ext_S) // sip
-function clause read_CSR(0x144, _) = lower_mip(mip, mideleg).bits
+function clause read_CSR(0x144) = lower_mip(mip, mideleg).bits
 function clause write_CSR(0x144, value) = { mip = lift_sip(mip, mideleg, Mk_Sinterrupts(value)); mip.bits }
 
 
@@ -883,7 +883,7 @@ function lift_sie(o : Minterrupts, d : Minterrupts, s : Sinterrupts) -> Minterru
 
 mapping clause csr_name_map = 0x104  <-> "sie"
 function clause is_CSR_defined(0x104) = extensionEnabled(Ext_S) // sie
-function clause read_CSR(0x104, _) = lower_mie(mie, mideleg).bits
+function clause read_CSR(0x104) = lower_mie(mie, mideleg).bits
 function clause write_CSR(0x104, value) = { mie = lift_sie(mie, mideleg, Mk_Sinterrupts(value)); mie.bits }
 
 
@@ -904,9 +904,9 @@ function clause is_CSR_defined(0x143) = extensionEnabled(Ext_S) // stval
 val get_sscratch : (unit) -> xlenbits
 val set_sscratch : (xlenbits) -> unit
 
-function clause read_CSR(0x140, _) = get_sscratch()
-function clause read_CSR(0x142, _) = get_xcause(Supervisor).bits
-function clause read_CSR(0x143, _) = stval
+function clause read_CSR(0x140) = get_sscratch()
+function clause read_CSR(0x142) = get_xcause(Supervisor).bits
+function clause read_CSR(0x143) = stval
 
 function clause write_CSR(0x140, value) = { set_sscratch(value); get_sscratch() }
 function clause write_CSR(0x142, value) = { set_xcause(Supervisor, value); get_xcause(Supervisor).bits }
@@ -1006,7 +1006,7 @@ mapping clause csr_name_map = 0x7a2  <-> "tdata2"
 mapping clause csr_name_map = 0x7a3  <-> "tdata3"
 
 function clause is_CSR_defined(0x7a0) = true
-function clause read_CSR(0x7a0, _) = ~(tselect)  /* this indicates we don't have any trigger support */
+function clause read_CSR(0x7a0) = ~(tselect)  /* this indicates we don't have any trigger support */
 function clause write_CSR(0x7a0, value) = { tselect = value; tselect }
 
 /*

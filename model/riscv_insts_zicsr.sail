@@ -60,7 +60,7 @@ function default_handle_csr_op(
   let is_CSRRW_write = isWrite & (op == CSRRW) & not(is_imm);
   let write_val : xlenbits = if is_imm then zero_extend(regidx_bits(rs1)) else X(rs1);
   // Reading CSRs can have side effects and is not done in certain cases.
-  let csr_val = if isRead then read_CSR(csr, write_val) else zeros();
+  let csr_val = if isRead then read_CSR(csr) else zeros();
   if isWrite then {
     let new_val : xlenbits = match op {
       CSRRW => write_val,

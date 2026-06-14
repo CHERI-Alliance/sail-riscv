@@ -243,7 +243,7 @@ mapping clause csr_name_map = 0x3EF  <-> "pmpaddr63"
 
 // pmpcfgN
 function clause is_CSR_defined(0x3A) @ idx : bits(4) = sys_pmp_count() > unsigned(idx) & (idx[0] == bitzero | xlen == 32)
-function clause read_CSR((0x3A @ idx : bits(4), _) if idx[0] == bitzero | xlen == 32) = pmpReadCfgReg(unsigned(idx))
+function clause read_CSR(0x3A @ idx : bits(4) if idx[0] == bitzero | xlen == 32) = pmpReadCfgReg(unsigned(idx))
 function clause write_CSR((0x3A @ idx : bits(4), value) if idx[0] == bitzero | xlen == 32) = {
   let idx = unsigned(idx);
   pmpWriteCfgReg(idx, value);
@@ -256,10 +256,10 @@ function clause is_CSR_defined(0x3C) @ idx : bits(4) = sys_pmp_count() > unsigne
 function clause is_CSR_defined(0x3D) @ idx : bits(4) = sys_pmp_count() > unsigned(0b10 @ idx)
 function clause is_CSR_defined(0x3E) @ idx : bits(4) = sys_pmp_count() > unsigned(0b11 @ idx)
 
-function clause read_CSR(0x3B @ idx : bits(4), _) = pmpReadAddrReg(unsigned(0b00 @ idx))
-function clause read_CSR(0x3C @ idx : bits(4), _) = pmpReadAddrReg(unsigned(0b01 @ idx))
-function clause read_CSR(0x3D @ idx : bits(4), _) = pmpReadAddrReg(unsigned(0b10 @ idx))
-function clause read_CSR(0x3E @ idx : bits(4), _) = pmpReadAddrReg(unsigned(0b11 @ idx))
+function clause read_CSR(0x3B @ idx : bits(4)) = pmpReadAddrReg(unsigned(0b00 @ idx))
+function clause read_CSR(0x3C @ idx : bits(4)) = pmpReadAddrReg(unsigned(0b01 @ idx))
+function clause read_CSR(0x3D @ idx : bits(4)) = pmpReadAddrReg(unsigned(0b10 @ idx))
+function clause read_CSR(0x3E @ idx : bits(4)) = pmpReadAddrReg(unsigned(0b11 @ idx))
 
 function clause write_CSR(0x3B @ idx : bits(4), value) = { let idx = unsigned(0b00 @ idx); pmpWriteAddrReg(idx, value); pmpReadAddrReg(idx) }
 function clause write_CSR(0x3C @ idx : bits(4), value) = { let idx = unsigned(0b01 @ idx); pmpWriteAddrReg(idx, value); pmpReadAddrReg(idx) }

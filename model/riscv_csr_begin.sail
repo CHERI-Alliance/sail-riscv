@@ -21,9 +21,8 @@ overload to_str = {csr_name}
 val is_CSR_defined : (csreg) -> bool
 scattered function is_CSR_defined
 
-// Returns the value of the CSR. The second parameter is the write value
-// which is needed for some crazy CLIC CSRs.
-val read_CSR : (csreg, xlenbits) -> xlenbits
+/* returns the value of the CSR if it is defined */
+val read_CSR : csreg -> xlenbits
 scattered function read_CSR
 
 /* returns new value (after legalisation) if the CSR is defined */

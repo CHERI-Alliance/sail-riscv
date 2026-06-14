@@ -28,9 +28,9 @@ function clause is_CSR_defined (0x001) = extensionEnabled(Ext_F) | extensionEnab
 function clause is_CSR_defined (0x002) = extensionEnabled(Ext_F) | extensionEnabled(Ext_Zfinx)
 function clause is_CSR_defined (0x003) = extensionEnabled(Ext_F) | extensionEnabled(Ext_Zfinx)
 
-function clause read_CSR(0x001, _) = zero_extend(fcsr[FFLAGS])
-function clause read_CSR(0x002, _) = zero_extend(fcsr[FRM])
-function clause read_CSR(0x003, _) = zero_extend(fcsr.bits)
+function clause read_CSR (0x001) = zero_extend(fcsr[FFLAGS])
+function clause read_CSR (0x002) = zero_extend(fcsr[FRM])
+function clause read_CSR (0x003) = zero_extend(fcsr.bits)
 
 function clause write_CSR (0x001, value) = { write_fcsr(fcsr[FRM], value[4..0]); zero_extend(fcsr[FFLAGS]) }
 function clause write_CSR (0x002, value) = { write_fcsr(value[2..0], fcsr[FFLAGS]); zero_extend(fcsr[FRM]) }

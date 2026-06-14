@@ -52,7 +52,7 @@ function write_mhpmeventh(index : hpmidx, value : bits(32)) -> unit =
 
 // mhpmevent3..31h
 function clause is_CSR_defined(0b0111001 /* 0x720 */ @ index : bits(5) if unsigned(index) >= 3) = extensionEnabled(Ext_Sscofpmf) & (xlen == 32)
-function clause read_CSR((0b0111001 /* 0x720 */ @ index : bits(5), _) if xlen == 32 & unsigned(index) >= 3) = read_mhpmeventh(hpmidx_from_bits(index))
+function clause read_CSR(0b0111001 /* 0x720 */ @ index : bits(5) if xlen == 32 & unsigned(index) >= 3) = read_mhpmeventh(hpmidx_from_bits(index))
 function clause write_CSR((0b0111001 /* 0x720 */ @ index : bits(5), value) if xlen == 32 & unsigned(index) >= 3) = {
   let index = hpmidx_from_bits(index);
   write_mhpmeventh(index, value);
@@ -80,5 +80,5 @@ function get_scountovf(priv : Privilege) -> bits(32) = {
 
 // scountovf
 function clause is_CSR_defined(0xDA0) = extensionEnabled(Ext_Sscofpmf) & extensionEnabled(Ext_S)
-function clause read_CSR(0xDA0, _) = zero_extend(get_scountovf(cur_privilege()))
+function clause read_CSR(0xDA0) = zero_extend(get_scountovf(cur_privilege()))
 // scountovf is read-only.
