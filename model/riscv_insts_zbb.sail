@@ -6,8 +6,8 @@
 /*  SPDX-License-Identifier: BSD-2-Clause                                                */
 /*=======================================================================================*/
 
-function clause extensionEnabled(Ext_Zbb) = sys_enable_zbb() | extensionEnabled(Ext_B)
-function clause extensionEnabled(Ext_Zbkb) = sys_enable_zbkb()
+function clause extensionEnabled(Ext_Zbb) = true | extensionEnabled(Ext_B)
+function clause extensionEnabled(Ext_Zbkb) = true
 
 /* ****************************************************************** */
 union clause ast = RISCV_RORIW : (bits(5), regidx, regidx)

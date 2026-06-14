@@ -8,10 +8,6 @@
 
 function clause extensionEnabled(Ext_V) = (misa[V] == 0b1) & (mstatus[VS] != 0b00)
 
-function clause extensionEnabled(Ext_Zvfhmin) = sys_enable_zvfhmin() & extensionEnabled(Ext_F) & extensionEnabled(Ext_V)
-
-function clause extensionEnabled(Ext_Zvfh) = sys_enable_zvfh() & extensionEnabled(Ext_Zvfhmin)
-
 // Note: The spec recommends trapping if vstart is out of bounds but the
 // current implementation does not do that because write_CSR() doesn't
 // allow traps.

@@ -121,9 +121,7 @@ function clause execute(VLSEGTYPE(nf, vm, rs1, width, vd)) = {
 
   assert(num_elem > 0);
 
-  if  illegal_load(vd, vm, nf_int, EEW, EMUL_pow) |
-      misaligned_vreg(vd, EMUL_pow)
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_load(vd, vm, nf_int, EEW, EMUL_pow) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vlseg(nf_int, vm, vd, load_width_bytes, rs1, EMUL_pow, num_elem)
 }
@@ -147,8 +145,6 @@ function process_vlsegff (nf, vm, vd, load_width_bytes, rs1, EMUL_pow, num_elem)
 
   let (result, mask) = init_masked_result(num_elem, nf * load_width_bytes * 8, EMUL_pow, vd_seg, vm_val);
 
-  set_vstart(zeros());
-
   var trimmed : bool = false;
   foreach (i from 0 to (num_elem - 1)) {
     if not(trimmed) then {
@@ -160,8 +156,7 @@ function process_vlsegff (nf, vm, vd, load_width_bytes, rs1, EMUL_pow, num_elem)
               if i == 0 then { ext_handle_data_check_error(e); return RETIRE_FAIL }
               else {
                 vl = to_bits(xlen, i);
-                if get_config_print_reg() then
-                  print_reg("CSR vl <- " ^ BitStr(vl));
+                print_reg("CSR vl <- " ^ BitStr(vl));
                 trimmed = true
               }
             },
@@ -170,8 +165,7 @@ function process_vlsegff (nf, vm, vd, load_width_bytes, rs1, EMUL_pow, num_elem)
                 if i == 0 then { handle_mem_exception(vaddr, E_Load_Addr_Align()); return RETIRE_FAIL }
                 else {
                   vl = to_bits(xlen, i);
-                  if get_config_print_reg() then
-                    print_reg("CSR vl <- " ^ BitStr(vl));
+                  print_reg("CSR vl <- " ^ BitStr(vl));
                   trimmed = true
                 }
               } else match translateAddr(vaddr, Read(Data)) {
@@ -179,8 +173,7 @@ function process_vlsegff (nf, vm, vd, load_width_bytes, rs1, EMUL_pow, num_elem)
                   if i == 0 then { handle_translate_exception(vaddr, e, ext_ptw); return RETIRE_FAIL }
                   else {
                     vl = to_bits(xlen, i);
-                    if get_config_print_reg() then
-                      print_reg("CSR vl <- " ^ BitStr(vl));
+                    print_reg("CSR vl <- " ^ BitStr(vl));
                     trimmed = true
                   }
                 },
@@ -191,8 +184,7 @@ function process_vlsegff (nf, vm, vd, load_width_bytes, rs1, EMUL_pow, num_elem)
                       if i == 0 then { handle_mem_exception(vaddr, e); return RETIRE_FAIL }
                       else {
                         vl = to_bits(xlen, i);
-                        if get_config_print_reg() then
-                          print_reg("CSR vl <- " ^ BitStr(vl));
+                        print_reg("CSR vl <- " ^ BitStr(vl));
                         trimmed = true
                       }
                     }
@@ -236,9 +228,7 @@ function clause execute(VLSEGFFTYPE(nf, vm, rs1, width, vd)) = {
 
   assert(num_elem > 0);
 
-  if  illegal_load(vd, vm, nf_int, EEW, EMUL_pow) |
-      misaligned_vreg(vd, EMUL_pow)
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_load(vd, vm, nf_int, EEW, EMUL_pow) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vlsegff(nf_int, vm, vd, load_width_bytes, rs1, EMUL_pow, num_elem)
 }
@@ -309,9 +299,7 @@ function clause execute(VSSEGTYPE(nf, vm, rs1, width, vs3)) = {
 
   assert(num_elem > 0);
 
-  if  illegal_store(nf_int, EEW, EMUL_pow) |
-      misaligned_vreg(vs3, EMUL_pow)
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_store(nf_int, EEW, EMUL_pow) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vsseg(nf_int, vm, vs3, load_width_bytes, rs1, EMUL_pow, num_elem)
 }
@@ -380,9 +368,7 @@ function clause execute(VLSSEGTYPE(nf, vm, rs2, rs1, width, vd)) = {
 
   assert(num_elem > 0);
 
-  if  illegal_load(vd, vm, nf_int, EEW, EMUL_pow) |
-      misaligned_vreg(vd, EMUL_pow)
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_load(vd, vm, nf_int, EEW, EMUL_pow) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vlsseg(nf_int, vm, vd, load_width_bytes, rs1, rs2, EMUL_pow, num_elem)
 }
@@ -454,9 +440,7 @@ function clause execute(VSSSEGTYPE(nf, vm, rs2, rs1, width, vs3)) = {
 
   assert(num_elem > 0);
 
-  if  illegal_store(nf_int, EEW, EMUL_pow) |
-      misaligned_vreg(vs3, EMUL_pow)
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_store(nf_int, EEW, EMUL_pow) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vssseg(nf_int, vm, vs3, load_width_bytes, rs1, rs2, EMUL_pow, num_elem)
 }
@@ -526,11 +510,7 @@ function clause execute(VLUXSEGTYPE(nf, vm, vs2, rs1, width, vd)) = {
 
   assert(num_elem > 0);
 
-  if  illegal_indexed_load(vd, vm, nf_int, EEW_index_bytes * 8, EMUL_index_pow, EMUL_data_pow) |
-      misaligned_vreg(vd, EMUL_data_pow) |
-      misaligned_vreg(vs2, EMUL_index_pow) |
-      not(valid_reg_overlap(vs2, vd, EMUL_index_pow, EMUL_data_pow))
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_indexed_load(vd, vm, nf_int, EEW_index_bytes * 8, EMUL_index_pow, EMUL_data_pow) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vlxseg(nf_int, vm, vd, EEW_index_bytes, EEW_data_bytes, EMUL_index_pow, EMUL_data_pow, rs1, vs2, num_elem, 1)
 }
@@ -556,11 +536,7 @@ function clause execute(VLOXSEGTYPE(nf, vm, vs2, rs1, width, vd)) = {
 
   assert(num_elem > 0);
 
-  if  illegal_indexed_load(vd, vm, nf_int, EEW_index_bytes * 8, EMUL_index_pow, EMUL_data_pow) |
-      misaligned_vreg(vd, EMUL_data_pow) |
-      misaligned_vreg(vs2, EMUL_index_pow) |
-      not(valid_reg_overlap(vs2, vd, EMUL_index_pow, EMUL_data_pow))
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_indexed_load(vd, vm, nf_int, EEW_index_bytes * 8, EMUL_index_pow, EMUL_data_pow) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vlxseg(nf_int, vm, vd, EEW_index_bytes, EEW_data_bytes, EMUL_index_pow, EMUL_data_pow, rs1, vs2, num_elem, 3)
 }
@@ -633,10 +609,7 @@ function clause execute(VSUXSEGTYPE(nf, vm, vs2, rs1, width, vs3)) = {
 
   assert(num_elem > 0);
 
-  if  illegal_indexed_store(nf_int, EEW_index_bytes * 8, EMUL_index_pow, EMUL_data_pow) |
-      misaligned_vreg(vs3, EMUL_data_pow) |
-      misaligned_vreg(vs2, EMUL_index_pow)
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_indexed_store(nf_int, EEW_index_bytes * 8, EMUL_index_pow, EMUL_data_pow) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vsxseg(nf_int, vm, vs3, EEW_index_bytes, EEW_data_bytes, EMUL_index_pow, EMUL_data_pow, rs1, vs2, num_elem, 1)
 }
@@ -662,10 +635,7 @@ function clause execute(VSOXSEGTYPE(nf, vm, vs2, rs1, width, vs3)) = {
 
   assert(num_elem > 0);
 
-  if  illegal_indexed_store(nf_int, EEW_index_bytes * 8, EMUL_index_pow, EMUL_data_pow) |
-      misaligned_vreg(vs3, EMUL_data_pow) |
-      misaligned_vreg(vs2, EMUL_index_pow)
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_indexed_store(nf_int, EEW_index_bytes * 8, EMUL_index_pow, EMUL_data_pow) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vsxseg(nf_int, vm, vs3, EEW_index_bytes, EEW_data_bytes, EMUL_index_pow, EMUL_data_pow, rs1, vs2, num_elem, 3)
 }
@@ -683,7 +653,7 @@ val process_vlre : forall 'f 'b 'n, ('f in {1, 2, 4, 8}) & ('b in {1, 2, 4, 8}) 
 function process_vlre (nf, vd, load_width_bytes, rs1, elem_per_reg) = {
   let width_type : word_width = size_bytes(load_width_bytes);
   let start_element = get_start_element();
-  if start_element >= nf * elem_per_reg then { set_vstart(zeros()); return RETIRE_SUCCESS }; /* no elements are written if vstart >= evl */
+  if start_element >= nf * elem_per_reg then return RETIRE_SUCCESS; /* no elements are written if vstart >= evl */
   let elem_to_align : int = start_element % elem_per_reg;
   var cur_field : int = start_element / elem_per_reg;
   var cur_elem  : int = start_element;
@@ -746,11 +716,7 @@ function clause execute(VLRETYPE(nf, rs1, width, vd)) = {
   let nf_int = nfields_int(nf);
 
   assert(elem_per_reg >= 0);
-  if not(nf_int == 1 | nf_int == 2 | nf_int == 4 | nf_int == 8)
-  then { handle_illegal(); return RETIRE_FAIL };
-
-  if misaligned_vreg(vd, log2(nf_int))
-  then { handle_illegal(); return RETIRE_FAIL };
+  if not(nf_int == 1 | nf_int == 2 | nf_int == 4 | nf_int == 8) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vlre(nf_int, vd, load_width_bytes, rs1, elem_per_reg)
 }
@@ -768,7 +734,7 @@ val process_vsre : forall 'f 'b 'n, ('f in {1, 2, 4, 8}) & ('b in {1, 2, 4, 8}) 
 function process_vsre (nf, load_width_bytes, rs1, vs3, elem_per_reg) = {
   let width_type : word_width = BYTE;
   let start_element = get_start_element();
-  if start_element >= nf * elem_per_reg then { set_vstart(zeros()); return RETIRE_SUCCESS }; /* no elements are written if vstart >= evl */
+  if start_element >= nf * elem_per_reg then return RETIRE_SUCCESS; /* no elements are written if vstart >= evl */
   let elem_to_align : int = start_element % elem_per_reg;
   var cur_field : int = start_element / elem_per_reg;
   var cur_elem  : int = start_element;
@@ -849,11 +815,7 @@ function clause execute(VSRETYPE(nf, rs1, vs3)) = {
   let nf_int = nfields_int(nf);
 
   assert(elem_per_reg >= 0);
-  if not(nf_int == 1 | nf_int == 2 | nf_int == 4 | nf_int == 8)
-  then { handle_illegal(); return RETIRE_FAIL };
-
-  if misaligned_vreg(vs3, log2(nf_int))
-  then { handle_illegal(); return RETIRE_FAIL };
+  if not(nf_int == 1 | nf_int == 2 | nf_int == 4 | nf_int == 8) then { handle_illegal(); return RETIRE_FAIL };
 
   process_vsre(nf_int, load_width_bytes, rs1, vs3, elem_per_reg)
 }

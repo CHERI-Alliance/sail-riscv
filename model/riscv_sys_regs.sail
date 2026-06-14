@@ -109,9 +109,6 @@ val sys_enable_zfinx = pure "sys_enable_zfinx" : unit -> bool
 /* whether Zfh/Zfhmin was enabled at boot */
 val sys_enable_zfh = pure "sys_enable_zfh" : unit -> bool
 val sys_enable_zfhmin = pure "sys_enable_zfhmin" : unit -> bool
-/* whether Zvfh/Zvfhmin was enabled at boot */
-val sys_enable_zvfh = pure "sys_enable_zvfh" : unit -> bool
-val sys_enable_zvfhmin = pure "sys_enable_zvfhmin" : unit -> bool
 /* whether misa.X should be set to indicate non-standard extensions */
 val sys_misa_x = pure "sys_misa_x" : unit -> bool
 

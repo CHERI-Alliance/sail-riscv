@@ -105,11 +105,6 @@ enum clause extension = Ext_Zksh
 // Floating-Point in Integer Registers (half precision)
 enum clause extension = Ext_Zhinx
 
-// Vector Half Float
-enum clause extension = Ext_Zvfh
-// Vector Minimal Half Float
-enum clause extension = Ext_Zvfhmin
-
 // Count Overflow and Mode-Based Filtering
 enum clause extension = Ext_Sscofpmf
 // Supervisor-mode Timer Interrupts

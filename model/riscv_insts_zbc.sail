@@ -6,8 +6,8 @@
 /*  SPDX-License-Identifier: BSD-2-Clause                                                */
 /*=======================================================================================*/
 
-function clause extensionEnabled(Ext_Zbc) = sys_enable_zbc()
-function clause extensionEnabled(Ext_Zbkc) = sys_enable_zbkc()
+function clause extensionEnabled(Ext_Zbc) = true
+function clause extensionEnabled(Ext_Zbkc) = true
 
 /* ****************************************************************** */
 union clause ast = RISCV_CLMUL : (regidx, regidx, regidx)

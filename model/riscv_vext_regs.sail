@@ -238,7 +238,7 @@ function get_num_elem(LMUL_pow, SEW) = {
   let LMUL_pow_reg = if LMUL_pow < 0 then 0 else LMUL_pow;
   /* Ignore lmul < 1 so that the entire vreg is read, allowing all masking to
    * be handled in init_masked_result */
-  let num_elem = (2 ^ LMUL_pow_reg) * VLEN / SEW;
+  let num_elem = 2 ^ LMUL_pow_reg * VLEN / SEW;
   assert(num_elem > 0);
   num_elem
 }
@@ -251,11 +251,7 @@ function read_single_vreg(num_elem, SEW, vrid) = {
 
   assert(8 <= SEW & SEW <= 64);
   foreach (i from 0 to (num_elem - 1)) {
-    // In case of register read for widening operation, the original implementation can reach out of bond.
-    // Therefore cap the register read index and wrap around for overflow - those 2nd time read elements
-    // will not be used anyway (this is guaranteed by the VL cap on the computation).
-    let j = i % (VLEN / SEW);
-    let start_index = j * SEW;
+    let start_index = i * SEW;
     result[i] = slice(bv, start_index, SEW);
   };
 
@@ -334,7 +330,6 @@ function write_vreg(num_elem, SEW, LMUL_pow, vrid, vec) = {
 
   let 'num_elem_single  : int = VLEN / SEW;
   assert('num_elem_single >= 0);
-
   foreach (i_lmul from 0 to (2 ^ LMUL_pow_reg - 1)) {
     var single_vec : vector('num_elem_single, bits('m)) = vector_init(zeros());
     let vrid_lmul  : vregidx = vregidx_offset(vrid, to_bits(5, i_lmul));

@@ -7,7 +7,7 @@
 /*=======================================================================================*/
 
 function clause extensionEnabled(Ext_B) = misa[B] == 0b1
-function clause extensionEnabled(Ext_Zba) = sys_enable_zba() | extensionEnabled(Ext_B)
+function clause extensionEnabled(Ext_Zba) = true | extensionEnabled(Ext_B)
 
 /* ****************************************************************** */
 union clause ast = RISCV_SLLIUW : (bits(6), regidx, regidx)

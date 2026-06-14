@@ -54,10 +54,10 @@ function illegal_fp_reduction(SEW, rm_3b) = {
 }
 
 /* f. Variable width check for floating-point widening reduction instructions */
-val illegal_fp_reduction_widen : ({8, 16, 32, 64}, bits(3), int) -> bool
-function illegal_fp_reduction_widen(SEW, rm_3b, SEW_widen) = {
+val illegal_fp_reduction_widen : ({8, 16, 32, 64}, bits(3), int, int) -> bool
+function illegal_fp_reduction_widen(SEW, rm_3b, SEW_widen, LMUL_pow_widen) = {
   not(valid_vtype()) | not(assert_vstart(0)) | not(valid_fp_op(SEW, rm_3b)) |
-  not(valid_eew(SEW_widen))
+  not(valid_eew_emul(SEW_widen, LMUL_pow_widen))
 }
 
 /* Floating point classification functions */
@@ -405,47 +405,47 @@ function fp_widen(nval) = {
 /* Floating point functions without softfloat support */
 val riscv_f16ToI16 : (bits_rm, bits_H) -> (bits_fflags, bits(16))
 function riscv_f16ToI16 (rm, v) = {
-  let (flags, sig32) = riscv_f16ToI32(rm, v);
+  let (_, sig32) = riscv_f16ToI32(rm, v);
   if signed(sig32) > signed(0b0 @ ones(15)) then (nvFlag(), 0b0 @ ones(15))
   else if signed(sig32) < signed(0b1 @ zeros(15)) then (nvFlag(), 0b1 @ zeros(15))
-  else (flags, sig32[15 .. 0]);
+  else (zeros(5), sig32[15 .. 0]);
 }
 
 val riscv_f16ToI8 : (bits_rm, bits_H) -> (bits_fflags, bits(8))
 function riscv_f16ToI8 (rm, v) = {
-  let (flags, sig32) = riscv_f16ToI32(rm, v);
+  let (_, sig32) = riscv_f16ToI32(rm, v);
   if signed(sig32) > signed(0b0 @ ones(7)) then (nvFlag(), 0b0 @ ones(7))
   else if signed(sig32) < signed(0b1 @ zeros(7)) then (nvFlag(), 0b1 @ zeros(7))
-  else (flags, sig32[7 .. 0]);
+  else (zeros(5), sig32[7 .. 0]);
 }
 
 val riscv_f32ToI16 : (bits_rm, bits_S) -> (bits_fflags, bits(16))
 function riscv_f32ToI16 (rm, v) = {
-  let (flags, sig32) = riscv_f32ToI32(rm, v);
+  let (_, sig32) = riscv_f32ToI32(rm, v);
   if signed(sig32) > signed(0b0 @ ones(15)) then (nvFlag(), 0b0 @ ones(15))
   else if signed(sig32) < signed(0b1 @ zeros(15)) then (nvFlag(), 0b1 @ zeros(15))
-  else (flags, sig32[15 .. 0]);
+  else (zeros(5), sig32[15 .. 0]);
 }
 
 val riscv_f16ToUi16 : (bits_rm, bits_H) -> (bits_fflags, bits(16))
 function riscv_f16ToUi16 (rm, v) = {
-  let (flags, sig32) = riscv_f16ToUi32(rm, v);
+  let (_, sig32) = riscv_f16ToUi32(rm, v);
   if unsigned(sig32) > unsigned(ones(16)) then (nvFlag(), ones(16))
-  else (flags, sig32[15 .. 0]);
+  else (zeros(5), sig32[15 .. 0]);
 }
 
 val riscv_f16ToUi8 : (bits_rm, bits_H) -> (bits_fflags, bits(8))
 function riscv_f16ToUi8 (rm, v) = {
-  let (flags, sig32) = riscv_f16ToUi32(rm, v);
+  let (_, sig32) = riscv_f16ToUi32(rm, v);
   if unsigned(sig32) > unsigned(ones(8)) then (nvFlag(), ones(8))
-  else (flags, sig32[7 .. 0]);
+  else (zeros(5), sig32[7 .. 0]);
 }
 
 val riscv_f32ToUi16 : (bits_rm, bits_S) -> (bits_fflags, bits(16))
 function riscv_f32ToUi16 (rm, v) = {
-  let (flags, sig32) = riscv_f32ToUi32(rm, v);
+  let (_, sig32) = riscv_f32ToUi32(rm, v);
   if unsigned(sig32) > unsigned(ones(16)) then (nvFlag(), ones(16))
-  else (flags, sig32[15 .. 0]);
+  else (zeros(5), sig32[15 .. 0]);
 }
 
 val rsqrt7 : forall 'm, 'm in {16, 32, 64}. (bits('m), bool) -> bits_D

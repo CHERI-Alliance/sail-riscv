@@ -31,13 +31,10 @@ function process_rfvv_single(funct6, vm, vs2, vs1, vd, num_elem_vs, SEW, LMUL_po
   let rm_3b = fcsr[FRM];
   let num_elem_vd = get_num_elem(0, SEW); /* vd regardless of LMUL setting */
 
-  if  illegal_fp_reduction(SEW, rm_3b) |
-      misaligned_vreg(vs2, LMUL_pow) |
-      (SEW == 16 & not(extensionEnabled(Ext_Zvfh)))
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_fp_reduction(SEW, rm_3b) then { handle_illegal(); return RETIRE_FAIL };
   assert(SEW != 8);
 
-  if unsigned(vl) == 0 then { set_vstart(zeros()); return RETIRE_SUCCESS }; /* if vl=0, no operation is performed */
+  if unsigned(vl) == 0 then return RETIRE_SUCCESS; /* if vl=0, no operation is performed */
 
   let 'n = num_elem_vs;
   let 'd = num_elem_vd;
@@ -73,14 +70,13 @@ val process_rfvv_widen: forall 'n 'm 'p, 'n > 0 & 'm in {8, 16, 32, 64}. (rfvvfu
 function process_rfvv_widen(funct6, vm, vs2, vs1, vd, num_elem_vs, SEW, LMUL_pow) = {
   let rm_3b          = fcsr[FRM];
   let SEW_widen      = SEW * 2;
+  let LMUL_pow_widen = LMUL_pow + 1;
   let num_elem_vd = get_num_elem(0, SEW_widen); /* vd regardless of LMUL setting */
 
-  if  illegal_fp_reduction_widen(SEW, rm_3b, SEW_widen) |
-      misaligned_vreg(vs2, LMUL_pow)
-  then { handle_illegal(); return RETIRE_FAIL };
+  if illegal_fp_reduction_widen(SEW, rm_3b, SEW_widen, LMUL_pow_widen) then { handle_illegal(); return RETIRE_FAIL };
   assert(SEW >= 16 & SEW_widen <= 64);
 
-  if unsigned(vl) == 0 then { set_vstart(zeros()); return RETIRE_SUCCESS }; /* if vl=0, no operation is performed */
+  if unsigned(vl) == 0 then return RETIRE_SUCCESS; /* if vl=0, no operation is performed */
 
   let 'n = num_elem_vs;
   let 'd = num_elem_vd;

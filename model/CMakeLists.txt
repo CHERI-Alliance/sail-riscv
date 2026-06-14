@@ -81,8 +81,7 @@ foreach (xlen IN ITEMS 32 64)
                 "riscv_insts_zbkb.sail"
                 "riscv_insts_zbkx.sail"
                 "riscv_insts_zicond.sail"
-                # TODO: Add these back to the build
-                # ${vext_srcs}
+                ${vext_srcs}
                 "riscv_insts_zicbom.sail"
                 "riscv_insts_zicboz.sail"
                 "cheri/cheri_insts_begin.sail"

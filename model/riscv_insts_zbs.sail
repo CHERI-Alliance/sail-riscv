@@ -6,7 +6,7 @@
 /*  SPDX-License-Identifier: BSD-2-Clause                                                */
 /*=======================================================================================*/
 
-function clause extensionEnabled(Ext_Zbs) = sys_enable_zbs() | extensionEnabled(Ext_B)
+function clause extensionEnabled(Ext_Zbs) = true | extensionEnabled(Ext_B)
 
 /* ****************************************************************** */
 union clause ast = ZBS_IOP : (bits(6), regidx, regidx, biop_zbs)
