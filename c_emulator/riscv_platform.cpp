@@ -218,159 +218,197 @@ unit memea(mach_bits, sail_int)
   return UNIT;
 }
 
-
-mach_bits plat_nmi_handler(unit u) {
+mach_bits plat_nmi_handler(unit u)
+{
   return 0;
 }
 
-mach_bits plat_pma_address(mach_bits i) {
+mach_bits plat_pma_address(mach_bits i)
+{
   return 0;
 }
 
-mach_bits plat_pma_atomicSupport_int(mach_bits i) {
+mach_bits plat_pma_atomicSupport_int(mach_bits i)
+{
   return 0;
 }
 
-bool plat_pma_cacheable(mach_bits i) {
+bool plat_pma_cacheable(mach_bits i)
+{
   return true;
 }
 
-bool plat_pma_coherent(mach_bits i) {
+bool plat_pma_coherent(mach_bits i)
+{
   return true;
 }
 
-mach_bits plat_pma_count(unit u) {
+mach_bits plat_pma_count(unit u)
+{
   return 1;
 }
 
-bool plat_pma_executable(mach_bits i) {
+bool plat_pma_executable(mach_bits i)
+{
   return true;
 }
 
-bool plat_pma_misalignmentCausesAccessFault(mach_bits i) {
+bool plat_pma_misalignmentCausesAccessFault(mach_bits i)
+{
   return false;
 }
 
-bool plat_pma_misalignmentCausesAlignmentFault(mach_bits i) {
+bool plat_pma_misalignmentCausesAlignmentFault(mach_bits i)
+{
   return false;
 }
 
-bool plat_pma_readable(mach_bits i) {
+bool plat_pma_readable(mach_bits i)
+{
   return true;
 }
 
-bool plat_pma_readIdempotent(mach_bits i) {
+bool plat_pma_readIdempotent(mach_bits i)
+{
   return true;
 }
 
-bool plat_pma_relaxed(mach_bits i) {
+bool plat_pma_relaxed(mach_bits i)
+{
   return true;
 }
 
-mach_bits plat_pma_reservability_int(mach_bits i) {
+mach_bits plat_pma_reservability_int(mach_bits i)
+{
   return 0;
 }
 
-mach_bits plat_pma_size(mach_bits i) {
+mach_bits plat_pma_size(mach_bits i)
+{
   return 0xF0000000;
 }
 
-bool plat_pma_supportsCboZero(mach_bits i) {
+bool plat_pma_supportsCboZero(mach_bits i)
+{
   return true;
 }
 
-bool plat_pma_taggable(mach_bits i) {
+bool plat_pma_taggable(mach_bits i)
+{
   return true;
 }
 
-bool plat_pma_taggableAccessFaults(mach_bits i) {
+bool plat_pma_taggableAccessFaults(mach_bits i)
+{
   return false;
 }
 
-bool plat_pma_writable(mach_bits i) {
+bool plat_pma_writable(mach_bits i)
+{
   return true;
 }
 
-bool plat_pma_writeIdempotent(mach_bits i) {
+bool plat_pma_writeIdempotent(mach_bits i)
+{
   return true;
 }
 
-mach_bits sys_asid_bits(unit u) {
+mach_bits sys_asid_bits(unit u)
+{
   return 4;
 }
 
-bool sys_enable_pbmt(unit u) {
+bool sys_enable_pbmt(unit u)
+{
   return true;
 }
 
-bool sys_enable_sscofpmf(unit u) {
+bool sys_enable_sscofpmf(unit u)
+{
   return true;
 }
 
-bool sys_enable_sv32(unit u) {
+bool sys_enable_sv32(unit u)
+{
   return true;
 }
 
-bool sys_enable_sv39(unit u) {
+bool sys_enable_sv39(unit u)
+{
   return true;
 }
 
-bool sys_enable_sv48(unit u) {
+bool sys_enable_sv48(unit u)
+{
   return true;
 }
 
-bool sys_enable_sv57(unit u) {
+bool sys_enable_sv57(unit u)
+{
   return true;
 }
 
-bool sys_enable_svnapot(unit u) {
+bool sys_enable_svnapot(unit u)
+{
   return true;
 }
 
-bool sys_enable_zfh(unit u) {
+bool sys_enable_zfh(unit u)
+{
   return true;
 }
 
-bool sys_enable_zfhmin(unit u) {
+bool sys_enable_zfhmin(unit u)
+{
   return true;
 }
 
-bool sys_enable_zihpm(unit u) {
+bool sys_enable_zihpm(unit u)
+{
   return true;
 }
 
-mach_bits sys_force_countinhibit_bits(unit u) {
+mach_bits sys_force_countinhibit_bits(unit u)
+{
   return 0;
 }
 
-mach_bits sys_hpmevent_writable_bits(unit u) {
+mach_bits sys_hpmevent_writable_bits(unit u)
+{
   return 0xFFFFFFFF;
 }
 
-mach_bits sys_medeleg_writable_bits(unit u) {
+mach_bits sys_medeleg_writable_bits(unit u)
+{
   return 0xFFFFFFFF;
 }
 
-mach_bits sys_mideleg_writable_bits(unit u) {
+mach_bits sys_mideleg_writable_bits(unit u)
+{
   return 0xFFFFFFFF;
 }
 
-bool sys_misa_x(unit u) {
+bool sys_misa_x(unit u)
+{
   return true;
 }
 
-mach_bits sys_pa_bits(unit u) {
+mach_bits sys_pa_bits(unit u)
+{
   return 39;
 }
 
-mach_bits sys_pmp_writable(unit u) {
+mach_bits sys_pmp_writable(unit u)
+{
   return 0xFFFFFFFF;
 }
 
-bool sys_writable_stip(unit u) {
+bool sys_writable_stip(unit u)
+{
   return 0xFFFFFFFF;
 }
 
-mach_bits sys_xcause_bits(unit u) {
+mach_bits sys_xcause_bits(unit u)
+{
   return 0xFFFFFFFF;
 }
