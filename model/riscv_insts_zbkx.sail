@@ -6,7 +6,7 @@
 /*  SPDX-License-Identifier: BSD-2-Clause                                                */
 /*=======================================================================================*/
 
-function clause extensionEnabled(Ext_Zbkx) = sys_enable_zbkx()
+function clause extensionEnabled(Ext_Zbkx) = true
 
 /* ****************************************************************** */
 union clause ast = RISCV_XPERM8 : (regidx, regidx, regidx)

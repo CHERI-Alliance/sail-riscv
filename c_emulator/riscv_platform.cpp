@@ -327,30 +327,6 @@ bool sys_enable_svnapot(unit u) {
   return true;
 }
 
-bool sys_enable_zba(unit u) {
-  return true;
-}
-
-bool sys_enable_zbb(unit u) {
-  return true;
-}
-
-bool sys_enable_zbc(unit u) {
-  return true;
-}
-
-bool sys_enable_zbkb(unit u) {
-  return true;
-}
-
-bool sys_enable_zbkc(unit u) {
-  return true;
-}
-
-bool sys_enable_zbs(unit u) {
-  return true;
-}
-
 bool sys_enable_zfh(unit u) {
   return true;
 }
@@ -360,10 +336,6 @@ bool sys_enable_zfhmin(unit u) {
 }
 
 bool sys_enable_zihpm(unit u) {
-  return true;
-}
-
-bool sys_enable_zkr(unit u) {
   return true;
 }
 

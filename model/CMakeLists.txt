@@ -71,16 +71,16 @@ foreach (xlen IN ITEMS 32 64)
                 "riscv_insts_zbb.sail"
                 "riscv_insts_zbc.sail"
                 "riscv_insts_zbs.sail"
+                "riscv_insts_zkn.sail"
+                "riscv_insts_zks.sail"
+                "riscv_insts_zbkb.sail"
+                "riscv_insts_zbkx.sail"
                 # TODO: Add these back to the build
                 # "riscv_insts_zcb.sail"
                 # "riscv_insts_zfh.sail"
                 # # Zfa needs to be added after fext, dext and Zfh (as it needs
                 # # definitions from those)
                 # "riscv_insts_zfa.sail"
-                # "riscv_insts_zkn.sail"
-                # "riscv_insts_zks.sail"
-                # "riscv_insts_zbkb.sail"
-                # "riscv_insts_zbkx.sail"
                 # "riscv_insts_zicond.sail"
                 # ${vext_srcs}
                 # "riscv_insts_zicbom.sail"

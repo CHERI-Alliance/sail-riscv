@@ -10,7 +10,8 @@
  * Scalar Cryptography Extension - Scalar SHA256 instructions (RV32/RV64)
  * ----------------------------------------------------------------------
  */
-function clause extensionEnabled(Ext_Zknh) = sys_enable_zknh()
+
+function clause extensionEnabled(Ext_Zknh) = true
 
 union clause ast = SHA256SIG0 : (regidx, regidx)
 union clause ast = SHA256SIG1 : (regidx, regidx)
@@ -74,7 +75,7 @@ function clause execute (SHA256SUM1(rs1, rd)) = {
  * ----------------------------------------------------------------------
  */
 
-function clause extensionEnabled(Ext_Zkne) = sys_enable_zkne()
+function clause extensionEnabled(Ext_Zkne) = true
 
 union clause ast = AES32ESMI : (bits(2), regidx, regidx, regidx)
 
@@ -116,7 +117,7 @@ function clause execute (AES32ESI (bs, rs2, rs1, rd)) = {
  * ----------------------------------------------------------------------
  */
 
-function clause extensionEnabled(Ext_Zknd) = sys_enable_zknd()
+function clause extensionEnabled(Ext_Zknd) = true
 
 union clause ast = AES32DSMI : (bits(2), regidx, regidx, regidx)
 

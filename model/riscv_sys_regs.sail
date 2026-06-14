@@ -112,23 +112,6 @@ val sys_enable_zfhmin = pure "sys_enable_zfhmin" : unit -> bool
 /* whether Zvfh/Zvfhmin was enabled at boot */
 val sys_enable_zvfh = pure "sys_enable_zvfh" : unit -> bool
 val sys_enable_zvfhmin = pure "sys_enable_zvfhmin" : unit -> bool
-/* whether Zba was enabled at boot */
-val sys_enable_zba = pure "sys_enable_zba" : unit -> bool
-/* whether Zbb was enabled at boot */
-val sys_enable_zbb = pure "sys_enable_zbb" : unit -> bool
-/* whether Zbc was enabled at boot */
-val sys_enable_zbc = pure "sys_enable_zbc" : unit -> bool
-/* whether Zbs was enabled at boot */
-val sys_enable_zbs = pure "sys_enable_zbs" : unit -> bool
-/* whether Crypto extensions were enabled at boot */
-val sys_enable_zbkb = pure "sys_enable_zbkb" : unit -> bool
-val sys_enable_zbkc = pure "sys_enable_zbkc" : unit -> bool
-val sys_enable_zbkx = pure "sys_enable_zbkx" : unit -> bool
-val sys_enable_zknd = pure "sys_enable_zknd" : unit -> bool
-val sys_enable_zkne = pure "sys_enable_zkne" : unit -> bool
-val sys_enable_zknh = pure "sys_enable_zknh" : unit -> bool
-val sys_enable_zksed = pure "sys_enable_zksed" : unit -> bool
-val sys_enable_zksh = pure "sys_enable_zksh" : unit -> bool
 /* whether misa.X should be set to indicate non-standard extensions */
 val sys_misa_x = pure "sys_misa_x" : unit -> bool
 

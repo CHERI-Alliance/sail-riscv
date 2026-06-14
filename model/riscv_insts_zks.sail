@@ -11,7 +11,7 @@
  * ----------------------------------------------------------------------
  */
 
-function clause extensionEnabled(Ext_Zksh) = sys_enable_zksh()
+function clause extensionEnabled(Ext_Zksh) = true
 
 union clause ast = SM3P0 : (regidx, regidx)
 union clause ast = SM3P1 : (regidx, regidx)
@@ -47,7 +47,7 @@ function clause execute (SM3P1(rs1, rd)) = {
  * ----------------------------------------------------------------------
  */
 
-function clause extensionEnabled(Ext_Zksed) = sys_enable_zksed()
+function clause extensionEnabled(Ext_Zksed) = true
 
 union clause ast = SM4ED : (bits(2), regidx, regidx, regidx)
 union clause ast = SM4KS : (bits(2), regidx, regidx, regidx)
