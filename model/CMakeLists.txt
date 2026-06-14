@@ -71,20 +71,20 @@ foreach (xlen IN ITEMS 32 64)
                 "riscv_insts_zbb.sail"
                 "riscv_insts_zbc.sail"
                 "riscv_insts_zbs.sail"
+                "riscv_insts_zcb.sail"
+                "riscv_insts_zfh.sail"
+                # Zfa needs to be added after fext, dext and Zfh (as it needs
+                # definitions from those)
+                "riscv_insts_zfa.sail"
                 "riscv_insts_zkn.sail"
                 "riscv_insts_zks.sail"
                 "riscv_insts_zbkb.sail"
                 "riscv_insts_zbkx.sail"
+                "riscv_insts_zicond.sail"
                 # TODO: Add these back to the build
-                # "riscv_insts_zcb.sail"
-                # "riscv_insts_zfh.sail"
-                # # Zfa needs to be added after fext, dext and Zfh (as it needs
-                # # definitions from those)
-                # "riscv_insts_zfa.sail"
-                # "riscv_insts_zicond.sail"
                 # ${vext_srcs}
-                # "riscv_insts_zicbom.sail"
-                # "riscv_insts_zicboz.sail"
+                "riscv_insts_zicbom.sail"
+                "riscv_insts_zicboz.sail"
                 "cheri/cheri_insts_begin.sail"
                 "cheri/cheri_insts.sail"
                 "cheri/cheri_insts_cext.sail"
@@ -113,7 +113,7 @@ foreach (xlen IN ITEMS 32 64)
             )
 
             set(sail_sys_srcs
-                # TODO: "riscv_vext_control.sail"
+                "riscv_vext_control.sail"
                 "cheri/cheri_sys_regs_access.sail"
                 "riscv_sys_regs_access_common.sail"
                 "cheri/cheri_sys_exceptions.sail"
