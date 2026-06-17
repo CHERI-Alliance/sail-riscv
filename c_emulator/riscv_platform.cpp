@@ -395,7 +395,7 @@ bool sys_misa_x(unit u)
 
 mach_bits sys_pa_bits(unit u)
 {
-  return 39;
+  return (zxlen_val == 32) ? 34 : 56;
 }
 
 mach_bits sys_pmp_writable(unit u)
