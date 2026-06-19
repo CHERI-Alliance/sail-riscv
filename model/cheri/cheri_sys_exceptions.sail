@@ -91,10 +91,16 @@ function prepare_xret_target(p : Privilege) -> xlenbits = {
                             User       => internal_error(__FILE__, __LINE__, "N extension not supported"),
                           };
 
-  set_next_pcc(unsealCap(epcc));
+  let aligned_addr = align_pc(epcc.address);
+  /* Only call setCapAddrChecked() if the address actually changed to
+   * avoid invalidating sentries that already have the correct address */
+  let aligned_epcc = if aligned_addr == epcc.address
+                     then epcc
+                     else setCapAddrChecked(epcc, aligned_addr);
+  set_next_pcc(unsealCap(aligned_epcc));
   /* Similar to prepare_trap_vector above we need to return the absolute address
     destined for PC, rather than the offset (architecutral PC) */
-  epcc.address
+  aligned_addr
 }
 
 // TODO: This is duplicated in `riscv_sys_exceptions.sail` which is unfortunate.
