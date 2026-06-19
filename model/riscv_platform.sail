@@ -135,6 +135,11 @@ val plat_rom_size   = pure {interpreter: "Platform.rom_size", c: "plat_rom_size"
 val plat_clint_base = pure {interpreter: "Platform.clint_base", c: "plat_clint_base", lem: "plat_clint_base"} : unit -> physaddrbits
 val plat_clint_size = pure {interpreter: "Platform.clint_size", c: "plat_clint_size", lem: "plat_clint_size"} : unit -> physaddrbits
 
+/* Location of HTIF ports */
+val plat_htif_tohost = pure {c: "plat_htif_tohost", lem: "plat_htif_tohost"} : unit -> physaddrbits
+function plat_htif_tohost () = to_bits(physaddrbits_len, elf_tohost ())
+// todo: fromhost
+
 /* Location of clic memory mapped registers */
 val plat_clic_base = pure {interpreter: "Platform.clic_base", c: "plat_clic_base", lem: "plat_clic_base"} : unit -> physaddrbits
 val plat_clic_size = pure {interpreter: "Platform.clic_size", c: "plat_clic_size", lem: "plat_clic_size"} : unit -> physaddrbits
@@ -152,6 +157,11 @@ function within_clint forall 'n, 0 < 'n <= max_mem_access . (physaddr(addr) : ph
   & (addr_int + sizeof('n)) <= (clint_base_int + clint_size_int)
 }
 
+function within_htif_writable forall 'n, 0 < 'n <= max_mem_access . (physaddr(addr) : physaddr, width : int('n)) -> bool =
+    plat_htif_tohost() == addr | (plat_htif_tohost() + 4 == addr & width == 4)
+
+function within_htif_readable forall 'n, 0 < 'n <= max_mem_access . (physaddr(addr) : physaddr, width : int('n)) -> bool =
+    plat_htif_tohost() == addr | (plat_htif_tohost() + 4 == addr & width == 4)
 
 /* CLINT (Core Local Interruptor), based on Spike. */
 
@@ -320,18 +330,144 @@ function tick_clock(cycles_increment : bits(64)) -> unit = {
 val plat_term_write = impure {c: "plat_term_write", lem: "plat_term_write"} : bits(8) -> unit
 val plat_term_read  = impure {c: "plat_term_read", lem: "plat_term_read"}  : unit -> bits(8)
 
-/* Top-level MMIO dispatch */
-function within_mmio_readable forall 'n, 0 < 'n <= max_mem_access . (addr : physaddr, width : int('n)) -> bool = {
-  within_clint(addr, width)
+/* Spike's HTIF device interface, which multiplexes the above MMIO devices. */
+
+bitfield htif_cmd : bits(64) = {
+  device  : 63 .. 56,
+  cmd     : 55 .. 48,
+  payload : 47 .. 0
 }
 
-function within_mmio_writable forall 'n, 0 < 'n <= max_mem_access . (addr : physaddr, width : int('n)) -> bool = {
-  within_clint(addr, width)
+register htif_tohost : bits(64)
+register htif_done   : bool
+register htif_exit_code : bits(64)
+
+/* Applications sometimes write the lower 32-bit payload bytes without
+   writing the control bytes; this is seen in the riscv-tests suite.
+   However, processing the payload bytes too early could miss a
+   subsequent write to the control bytes.  As a workaround, if the
+   payload is written a few times with the same value, without an
+   intervening write to the control bytes, we process the whole htif
+   command anyway.  */
+
+register htif_cmd_write : bit
+register htif_payload_writes : bits(4)
+
+/* Once a htif command has been processed, the port is reset. */
+function reset_htif () -> unit = {
+  htif_cmd_write = bitzero;
+  htif_payload_writes = 0x0;
+  htif_tohost = zeros();
 }
+
+/* Since the htif tohost port is only available at a single address,
+ * we'll assume here that physical memory model has correctly
+ * dispatched the address.
+ */
+
+val htif_load : forall 'n, 'n > 0. (AccessType(ext_access_type), physaddr, int('n)) -> MemoryOpResult(bits(8 * 'n))
+function htif_load(t, physaddr(paddr), width) = {
+  if   get_config_print_platform()
+  then print_platform("htif[" ^ BitStr(paddr) ^ "] -> " ^ BitStr(htif_tohost));
+  /* FIXME: For now, only allow the expected access widths. */
+  if      width == 8 & (paddr == plat_htif_tohost())
+  then    Ok(zero_extend(64, htif_tohost))         /* FIXME: Redundant zero_extend currently required by Lem backend */
+  else if width == 4 & paddr == plat_htif_tohost()
+  then    Ok(zero_extend(32, htif_tohost[31..0]))  /* FIXME: Redundant zero_extend currently required by Lem backend */
+  else if width == 4 & paddr == plat_htif_tohost() + 4
+  then    Ok(zero_extend(32, htif_tohost[63..32])) /* FIXME: Redundant zero_extend currently required by Lem backend */
+  else match t {
+    Execute()  => Err(E_Fetch_Access_Fault()),
+    Read(Data) => Err(E_Load_Access_Fault()),
+    _          => Err(E_SAMO_Access_Fault())
+  }
+}
+
+val htif_store: forall 'n, 0 < 'n <= 8. (physaddr, int('n), bits(8 * 'n)) -> MemoryOpResult(bool)
+function htif_store(physaddr(paddr), width, data) = {
+  if   get_config_print_platform()
+  then print_platform("htif[" ^ BitStr(paddr) ^ "] <- " ^ BitStr(data));
+  /* Store the written value so that we can ack it later. */
+  if      width == 8
+  then    { htif_cmd_write = bitone;
+            htif_payload_writes = htif_payload_writes + 1;
+            htif_tohost = zero_extend(data) }
+  else if width == 4 & paddr == plat_htif_tohost()
+  then    { if   data == htif_tohost[31 .. 0]
+            then htif_payload_writes = htif_payload_writes + 1
+            else htif_payload_writes = 0x1;
+            htif_tohost = vector_update_subrange(htif_tohost, 31, 0, data) }
+  else if width == 4 & paddr == plat_htif_tohost() + 4
+  then    { if   data[15 .. 0] == htif_tohost[47 .. 32]
+            then htif_payload_writes = htif_payload_writes + 1
+            else htif_payload_writes = 0x1;
+            htif_cmd_write = bitone;
+            htif_tohost = vector_update_subrange(htif_tohost, 63, 32, data) }
+  /* unaligned command writes are not supported and will not be detected */
+  else    { htif_tohost = zero_extend(data) };
+
+  /* Execute if there were repeated writes of the same payload without
+   * a cmd (e.g. in riscv-tests), or we have a complete htif command.
+   */
+  if   (((htif_cmd_write == bitone) & (unsigned(htif_payload_writes) > 0))
+        | (unsigned(htif_payload_writes) > 2))
+  then {
+    let cmd = Mk_htif_cmd(htif_tohost);
+    match cmd[device] {
+      0x00 => { /* syscall-proxy */
+        if   get_config_print_platform()
+        then print_platform("htif-syscall-proxy cmd: " ^ BitStr(cmd[payload]));
+        if   cmd[payload][0] == bitone
+        then {
+             htif_done = true;
+             htif_exit_code = (zero_extend(64, cmd[payload]) >> 1)
+        }
+        else ()
+      },
+      0x01 => { /* terminal */
+        if   get_config_print_platform()
+        then print_platform("htif-term cmd: " ^ BitStr(cmd[payload]));
+        match cmd[cmd] {
+          0x00 => /* TODO: terminal input handling */ (),
+          0x01 => plat_term_write(cmd[payload][7..0]),
+          c    => print("Unknown term cmd: " ^ BitStr(c))
+        };
+        /* reset to ack */
+        reset_htif()
+      },
+      d => print("htif-???? cmd: " ^ BitStr(data))
+    }
+  };
+  Ok(true)
+}
+
+val htif_tick : unit -> unit
+function htif_tick() = {
+  if   get_config_print_platform()
+  then print_platform("htif::tick " ^ BitStr(htif_tohost));
+  htif_tohost = htif_tohost /* prevent this function being optimized out */
+}
+
+/* Top-level MMIO dispatch */
+$ifndef RVFI_DII
+function within_mmio_readable forall 'n, 0 < 'n <= max_mem_access . (addr : physaddr, width : int('n)) -> bool =
+  within_clint(addr, width) | (within_htif_readable(addr, width) & 1 <= 'n)
+$else
+function within_mmio_readable forall 'n, 0 < 'n <= max_mem_access . (addr : physaddr, width : int('n)) -> bool = false
+$endif
+
+$ifndef RVFI_DII
+function within_mmio_writable forall 'n, 0 < 'n <= max_mem_access . (addr : physaddr, width : int('n)) -> bool =
+  within_clint(addr, width) | (within_htif_writable(addr, width) & 'n <= 8)
+$else
+function within_mmio_writable forall 'n, 0 < 'n <= max_mem_access . (addr : physaddr, width : int('n)) -> bool = false
+$endif
 
 function mmio_read forall 'n, 0 < 'n <= max_mem_access . (t : AccessType(ext_access_type), paddr : physaddr, width : int('n)) -> MemoryOpResult(bits(8 * 'n)) =
   if   within_clint(paddr, width)
   then clint_load(t, paddr, width)
+  else if within_htif_readable(paddr, width) & (1 <= 'n)
+  then htif_load(t, paddr, width)
   else match t {
     Execute()  => Err(E_Fetch_Access_Fault()),
     Read(Data) => Err(E_Load_Access_Fault()),
@@ -341,15 +477,24 @@ function mmio_read forall 'n, 0 < 'n <= max_mem_access . (t : AccessType(ext_acc
 function mmio_write forall 'n, 0 <'n <= max_mem_access . (paddr : physaddr, width : int('n), data: bits(8 * 'n)) -> MemoryOpResult(bool) =
   if   within_clint(paddr, width)
   then clint_store(paddr, width, data)
+  else if within_htif_writable(paddr, width) & 'n <= 8
+  then htif_store(paddr, width, data)
   else Err(E_SAMO_Access_Fault())
 
 /* Platform initialization and ticking. */
 
 function init_platform() -> unit = {
+  htif_tohost = zeros();
+  htif_done   = false;
+  htif_exit_code = zeros();
+  htif_cmd_write = bitzero;
+  htif_payload_writes = zeros();
   init_pma_regions();
 }
 
-function tick_platform() -> unit = ()
+function tick_platform() -> unit = {
+  htif_tick();
+}
 
 /* Platform-specific handling of instruction faults */
 

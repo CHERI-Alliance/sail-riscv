@@ -713,10 +713,6 @@ void run_sail(void)
     exit(1);
   }
 
-  // TODO: Not this.
-  bool zhtif_done = false;
-  unsigned zhtif_exit_code = 1;
-
   while (!zhtif_done && (insn_limit == 0 || total_insns < insn_limit)) {
 #ifdef RVFI_DII
     if (rvfi_dii) {
