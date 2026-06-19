@@ -230,7 +230,7 @@ mach_bits plat_pma_address(mach_bits i)
 
 mach_bits plat_pma_atomicSupport_int(mach_bits i)
 {
-  return 0;
+  return 3; // AMOArithmetic (full atomic memory operation support)
 }
 
 bool plat_pma_cacheable(mach_bits i)
@@ -280,7 +280,7 @@ bool plat_pma_relaxed(mach_bits i)
 
 mach_bits plat_pma_reservability_int(mach_bits i)
 {
-  return 0;
+  return 2; // RsrvEventual (eventual success guarantee for LR/SC)
 }
 
 mach_bits plat_pma_size(mach_bits i)
