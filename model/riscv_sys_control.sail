@@ -199,33 +199,33 @@ function trap_handler(del_priv : Privilege, intr : bool, c : exc_code, pc : xlen
 
   let newPc : xlenbits = match del_priv {
     Machine => {
-      mcause[IsInterrupt] = bool_to_bits(intr);
-      mcause[Cause]       = zero_extend(c);
-      mstatus[MPIE] = mstatus[MIE];
-      mstatus[MIE]  = 0b0;
-      mstatus[MPP]  = privLevel_to_bits(cur_privilege());
-      mtval         = tval(info);
-      set_mepc(pc);
+       mcause[IsInterrupt] = bool_to_bits(intr);
+       mcause[Cause]       = zero_extend(c);
+       mstatus[MPIE] = mstatus[MIE];
+       mstatus[MIE]  = 0b0;
+       mstatus[MPP]  = privLevel_to_bits(cur_privilege());
+       mtval         = tval(info);
+       set_mepc(pc);
 
-      set_cur_privilege(del_priv);
+       set_cur_privilege(del_priv);
 
-      prepare_trap_vector(del_priv, mcause)
+       prepare_trap_vector(del_priv, mcause)
     },
     Supervisor => {
-      assert (extensionEnabled(Ext_S), "no supervisor mode present for delegation");
+       assert (extensionEnabled(Ext_S), "no supervisor mode present for delegation");
 
-      scause[IsInterrupt] = bool_to_bits(intr);
-      scause[Cause]       = zero_extend(c);
+       scause[IsInterrupt] = bool_to_bits(intr);
+       scause[Cause]       = zero_extend(c);
 
-      mstatus[SPIE] = mstatus[SIE];
-      mstatus[SIE]  = 0b0;
-      mstatus[SPP]  = match cur_privilege() {
-                        User => 0b0,
-                        Supervisor => 0b1,
-                        Machine => internal_error(__FILE__, __LINE__, "invalid privilege for s-mode trap")
-                      };
-      stval         = tval(info);
-      set_sepc(pc);
+       mstatus[SPIE] = mstatus[SIE];
+       mstatus[SIE]  = 0b0;
+       mstatus[SPP]  = match cur_privilege() {
+                           User => 0b0,
+                           Supervisor => 0b1,
+                           Machine => internal_error(__FILE__, __LINE__, "invalid privilege for s-mode trap")
+                         };
+       stval           = tval(info);
+       set_sepc(pc);
 
       set_cur_privilege(del_priv);
 
