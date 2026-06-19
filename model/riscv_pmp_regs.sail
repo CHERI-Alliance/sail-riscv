@@ -143,7 +143,7 @@ function pmpWriteAddr(locked: bool, tor_locked: bool, reg: xlenbits, v: xlenbits
     // pmpaddr does not contain the lowest 2 bits of the addresses
     // so we actually use PA_BITS-3.
     let pa_bits = sys_pa_bits();
-    assert(pa_bits <= xlen);
+    assert(pa_bits - 3 < xlen);
     zero_extend(v[pa_bits - 3 .. 0])
   }
 
