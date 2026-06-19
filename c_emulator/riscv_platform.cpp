@@ -410,5 +410,5 @@ bool sys_writable_stip(unit u)
 
 mach_bits sys_xcause_bits(unit u)
 {
-  return 0xFFFFFFFF;
+  return zxlen_val - 1;
 }
