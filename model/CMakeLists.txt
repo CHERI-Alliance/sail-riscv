@@ -218,6 +218,8 @@ foreach (variant IN ITEMS "" "smt" "rocq" "rmem" "lean" "lem" "isabelle")
         "riscv_fetch_rvfi.sail"
         "riscv_fetch.sail"
         "riscv_step.sail"
+        "cheri/test_main_ext.sail"
+        "test_main.sail"
     )
 
     if (variant STREQUAL "rocq" OR variant STREQUAL "lean")
@@ -300,6 +302,7 @@ foreach (variant IN ITEMS "" "smt" "rocq" "rmem" "lean" "lem" "isabelle")
                 --c-preserve generate_dts
                 --c-preserve config_is_valid
                 --c-preserve generate_canonical_isa_string
+                --c-preserve test_main
                 # Preserve RVFI functions.
                 --c-preserve rvfi_set_instr_packet
                 --c-preserve rvfi_get_cmd
