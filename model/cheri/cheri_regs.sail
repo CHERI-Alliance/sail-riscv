@@ -9,21 +9,21 @@
 /* accessors for capability representation */
 
 /* reads a given capability register, or the null capability if the argument is zero. */
-function rC(r : regno) -> regtype = rX_full(r)
+function rY(r : regno) -> regtype = rX_full(r)
 
 /* writes a register with a capability value */
-function wC (Regno(r) : regno, v : regtype) -> unit = {
+function wY (Regno(r) : regno, v : regtype) -> unit = {
   wX_full(Regno(r), v);
   if r != 0 then xreg_write_callback(Regidx(to_bits(r)), v.address)
 }
 
-function rC_bits(Regidx(i): regidx) -> regtype = rC(Regno(unsigned(i)))
+function rY_bits(Regidx(i): regidx) -> regtype = rY(Regno(unsigned(i)))
 
-function wC_bits(Regidx(i): regidx, v: regtype) -> unit = {
-  wC(Regno(unsigned(i))) = v
+function wY_bits(Regidx(i): regidx, v: regtype) -> unit = {
+  wY(Regno(unsigned(i))) = v
 }
 
-overload C = {rC_bits, wC_bits, rC, wC}
+overload Y = {rY_bits, wY_bits, rY, wY}
 
 /*!
  * This function is called after above when running rvfi and allows the model
