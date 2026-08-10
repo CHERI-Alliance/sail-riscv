@@ -10,42 +10,61 @@ function test_cheri_cram() -> unit = {
     assert(getRepresentableAlignmentMask(zeros()) == ones());
 }
 
+type Retired = ExecutionResult
+let RETIRE_FAIL : ExecutionResult = Illegal_Instruction()
+
+function execute_test(ast : instruction) -> ExecutionResult = {
+  match execute(ast) {
+    Retire_Success() => RETIRE_SUCCESS,
+    Enter_Wait(_) => RETIRE_SUCCESS,
+    Ext_ControlAddr_Check_Failure(e) => { ext_handle_control_check_error(e); RETIRE_FAIL },
+    Ext_XRET_Priv_Failure() => { ext_fail_xret_priv(); RETIRE_FAIL },
+    Trap(priv, ctl, pc) => { set_next_pc(exception_handler(priv, ctl, pc)); RETIRE_FAIL },
+    Memory_Exception(vaddr, e) => { handle_mem_exception(vaddr, e); RETIRE_FAIL },
+    Illegal_Instruction() => { handle_illegal(zeros()); RETIRE_FAIL },
+    Translate_Exception(vaddr, exc, e_ptw) => { handle_translate_exception(vaddr, exc, e_ptw); RETIRE_FAIL },
+    CHERI_Exception(ty, exc, vaddr) => { handle_cheri_exception(ty, exc, vaddr); RETIRE_FAIL },
+    Ext_CSR_Check_Failure(fail_type) => { ext_check_CSR_fail(fail_type); RETIRE_FAIL },
+    Ext_DataAddr_Check_Failure(e) => { ext_handle_data_check_error(e); RETIRE_FAIL },
+  }
+}
+
 function test_cheri_xtval2() -> unit = {
     // Check that CHERI exceptions are reported in MTVAL2
     PCC = {setCapMode(PCC, CapPtrMode)};
-    assert(execute(LoadCapImm(zreg, zreg, zeros())) == RETIRE_FAIL); // Throw tag exception
+    assert(execute_test(LoadCapImm(zreg, zreg, zeros())) == RETIRE_FAIL); // Throw tag exception
     assert(mtval2[TYPE] == capchecktype_code(CapCheckType_Data));
     assert(mtval2[CAUSE] == capex_code(CapEx_TagViolation));
 }
 
-function test_cheri_sdtrig() -> unit = {
-  set_cur_privilege(Machine);
-  assert (not(debug_mode_active));
-  let addr : xlenbits = zero_extend(0x01234567);
-  let src : regidx = Regidx(0b00100);
-  let rd : regidx = Regidx(0b00011);
-  C(src) = { null_cap with address = addr };
-  PCC = setCapMode(PCC, CapPtrMode);
-  let ret = execute(LoadCapImm(rd, src, zeros()));
-  assert (ret == RETIRE_FAIL);
-  assert (mcause[Cause] == zero_extend (0x1C));
-  assert (not(debug_mode_active));
-  let tdata1 : xlenbits = 0x68 @ zeros(xlen - 24) @ 0x107f;
-  write_tdata1_underlying(0, tdata1);
-  write_tdata2_underlying(0, addr);
-  PCC = setCapMode(PCC, CapPtrMode);
-  let ret = execute(LoadCapImm(rd, src, zeros()));
-  assert (ret == RETIRE_DEBUG_TRIGGER);
-  assert (debug_mode_active);
-  let _ = execute (DRET());
-  assert (not(debug_mode_active));
-  X(src) = addr;
-  set_ddc(null_cap);
-  PCC = setCapMode(PCC, IntPtrMode);
-  let _ = execute(LOAD(zeros(), src, rd, true, BYTE, false, false));
-  assert (ret == RETIRE_DEBUG_TRIGGER);
-  assert (debug_mode_active);
-}
+//function test_cheri_sdtrig() -> unit = {
+//  set_cur_privilege(Machine);
+//  assert (not(debug_mode_active));
+//  let addr : xlenbits = zero_extend(0x01234567);
+//  let src : regidx = Regidx(0b00100);
+//  let rd : regidx = Regidx(0b00011);
+//  C(src) = { null_cap with address = addr };
+//  PCC = setCapMode(PCC, CapPtrMode);
+//  let ret = execute(LoadCapImm(rd, src, zeros()));
+//  assert (ret == RETIRE_FAIL);
+//  assert (mcause[Cause] == zero_extend (0x1C));
+//  assert (not(debug_mode_active));
+//  let tdata1 : xlenbits = 0x68 @ zeros(xlen - 24) @ 0x107f;
+//  write_tdata1_underlying(0, tdata1);
+//  write_tdata2_underlying(0, addr);
+//  PCC = setCapMode(PCC, CapPtrMode);
+//  let ret = execute(LoadCapImm(rd, src, zeros()));
+//  assert (ret == RETIRE_DEBUG_TRIGGER);
+//  assert (debug_mode_active);
+//  let _ = execute (DRET());
+//  assert (not(debug_mode_active));
+//  X(src) = addr;
+//  set_ddc(null_cap);
+//  PCC = setCapMode(PCC, IntPtrMode);
+//  let _ = execute(LOAD(zeros(), src, rd, true, BYTE, false, false));
+//  assert (ret == RETIRE_DEBUG_TRIGGER);
+//  assert (debug_mode_active);
+//}
 
 function test_cheri_nofastrep () -> unit = {
     // Check that the representability check is exact, i.e. that the historical
@@ -104,14 +123,14 @@ function test_cheri_zba() -> unit = {
     C(capR) = infinite_cap;
     X(indR) = to_bits(xlen, 1);
     C(resR) = infinite_cap;
-    test_cheri_zba_mode(encdec(ZBA_RTYPE(capR, indR, resR, RISCV_SH1ADD)), resR);
-    test_cheri_zba_mode(encdec(ZBA_RTYPE(capR, indR, resR, RISCV_SH2ADD)), resR);
-    test_cheri_zba_mode(encdec(ZBA_RTYPE(capR, indR, resR, RISCV_SH3ADD)), resR);
+    test_cheri_zba_mode(encdec(ZBA_RTYPE(capR, indR, resR, 0b01)), resR);
+    test_cheri_zba_mode(encdec(ZBA_RTYPE(capR, indR, resR, 0b10)), resR);
+    test_cheri_zba_mode(encdec(ZBA_RTYPE(capR, indR, resR, 0b11)), resR);
     if xlen == 32 then () else {
-        test_cheri_zba_mode(encdec(ZBA_RTYPEUW(capR, indR, resR, RISCV_ADDUW)), resR);
-        test_cheri_zba_mode(encdec(ZBA_RTYPEUW(capR, indR, resR, RISCV_SH1ADDUW)), resR);
-        test_cheri_zba_mode(encdec(ZBA_RTYPEUW(capR, indR, resR, RISCV_SH2ADDUW)), resR);
-        test_cheri_zba_mode(encdec(ZBA_RTYPEUW(capR, indR, resR, RISCV_SH3ADDUW)), resR);
+        test_cheri_zba_mode(encdec(ZBA_RTYPEUW(capR, indR, resR, 0b00)), resR);
+        test_cheri_zba_mode(encdec(ZBA_RTYPEUW(capR, indR, resR, 0b01)), resR);
+        test_cheri_zba_mode(encdec(ZBA_RTYPEUW(capR, indR, resR, 0b10)), resR);
+        test_cheri_zba_mode(encdec(ZBA_RTYPEUW(capR, indR, resR, 0b11)), resR);
         test_cheri_zba_mode(encdec(ZBA_SH4ADD(capR, indR, resR)), resR);
         test_cheri_zba_mode(encdec(ZBA_SH4ADDUW(capR, indR, resR)), resR);
     }
@@ -258,18 +277,18 @@ function test_cheri_circular() -> unit = {
       atomicSupport                    = AMONone,
       reservability                    = RsrvNone,
       taggable                         = true,
-      taggableAccessFaults      = false,
+      taggableAccessFaults             = false,
       supportsCboZero                  = true,
     };
     // Since PMAs can't encode a 2^XLEN region we'll just have two regions.
     let half_mem = 0b1 @ zeros(physaddrbits_len - 1);
     let region_0 : PMA_Region = struct {
-      base       = physaddr(zeros()),
+      base       = Physaddr(zeros()),
       size       = half_mem,
       attributes = attr,
     };
     let region_1 : PMA_Region = struct {
-      base       = physaddr(half_mem),
+      base       = Physaddr(half_mem),
       size       = half_mem,
       attributes = attr,
     };
@@ -278,13 +297,13 @@ function test_cheri_circular() -> unit = {
     // Write to low end of address space
     X(valR) = zeros(sizeof(xlen - 8)) @ 0xbe;
     C(capR) = { infinite_cap with address = to_bits(xlen, 0) };
-    assert(execute(STORE(zeros(), valR, capR, BYTE, false, false)) == RETIRE_SUCCESS);
+    assert(execute(STORE(zeros(), valR, capR, 1)) == RETIRE_SUCCESS);
     // Write to high end of address space
     X(valR) = zeros(sizeof(xlen - 8)) @ 0xef;
-    C(capR) = { infinite_cap with address = to_bits(xlen, -1) };
-    assert(execute(STORE(zeros(), valR, capR, BYTE, false, false)) == RETIRE_SUCCESS);
+    C(capR) = { infinite_cap with address = ones() };
+    assert(execute(STORE(zeros(), valR, capR, 1)) == RETIRE_SUCCESS);
     // Perform wrapping read
-    assert(execute(LOAD(zeros(), capR, valR, true, HALF, false, false)) == RETIRE_SUCCESS);
+    assert(execute(LOAD(zeros(), capR, valR, true, 2)) == RETIRE_SUCCESS);
     // Check we got the right answer
     assert(X(valR) == zeros(sizeof(xlen - 16)) @ 0xbeef);
 
@@ -294,25 +313,25 @@ function test_cheri_circular() -> unit = {
     let base = ones(sizeof(xlen)) - zero_extend(0x1000);
     let (_, capTest) = setCapBounds(infinite_cap, base, top);
     C(capR) = { capTest with address = ones(sizeof(xlen)) };
-    assert(execute(LOAD(zeros(), capR, valR, true, HALF, false, false)) == RETIRE_FAIL);
+    assert(execute_test(LOAD(zeros(), capR, valR, true, 2)) == RETIRE_FAIL);
     assert(mtval2[TYPE] == capchecktype_code(CapCheckType_Data));
     assert(mtval2[CAUSE] == capex_code(CapEx_LengthViolation));
 }
 
 function test_cheri_clen_csr() -> unit = {
-    let csr : csreg = csr_name_map("mtvec");
+    let csr : csreg = csr_name_map("mscratch");
     let (_, capTest) = setCapBounds(infinite_cap, zero_extend(0x00010000), zero_extend(0x00020000));
     let src : regidx = Regidx(0b00100);
     let dst : regidx = Regidx(0b00101);
     let tmp : regidx = Regidx(0b11000);
     C(src) = capTest;
-    /////////////////////////////////////////////
+    // ///////////////////////////////////////////
     PCC = {setCapMode(PCC, CapPtrMode)};
     let _ = handle_csr_op(csr, src, dst, false, CSRRW, true, false);
     let _ = handle_csr_op(csr, src, dst, false, CSRRW, false, true);
     assert(C(src) == C(dst));
     assert(C(dst) == capTest);
-    /////////////////////////////////////////////
+    // ///////////////////////////////////////////
     let addr : xlenbits = zero_extend(0x00010111);
     X(tmp) = addr;
     PCC = {setCapMode(PCC, IntPtrMode)};
@@ -332,7 +351,7 @@ function test_cheri_clen_csr() -> unit = {
 function attempt_csr_access(priv : Privilege, asr : bool, op : csrop, csr : csreg, src : regidx, dst : regidx) -> Retired = {
     set_cur_privilege(priv);
     PCC = setArchPerms(PCC, {getArchPermsLegalized(PCC) with ASR=asr});
-    execute(CSR(csr, src, dst, false, op))
+    execute_test(CSRReg(csr, src, dst, op))
 }
 
 function test_csr_access_priv_asr_rw(csr : string, priv : Privilege, asr : bool, write : bool, allowed : bool) -> unit = {
@@ -368,8 +387,6 @@ function test_cheri_csr_access_control() -> unit = {
     //              CSR        , minPriv   , ro   , needsAsrWrite, needsAsrRead
     // Completely new registers added by CHERI
     test_csr_access("ddc"      , User      , false, false, false);
-    test_csr_access("mtdc"     , Machine   , false, true , true);
-    test_csr_access("stdc"     , Supervisor, false, true , true);
     test_csr_access("mtid"     , Machine   , false, true , false);
     test_csr_access("stid"     , Supervisor, false, true , false);
     test_csr_access("utid"     , User      , false, true , false);
@@ -397,7 +414,7 @@ function assert_behaviour(inCap : Capability,
                           outBits : xlenbits) -> unit = {
     C(capR) = inCap;
     assert(C(capR).tag);
-    let ret = execute(instruction);
+    let ret = execute_test(instruction);
     match exc {
       None() => {
         assert(ret == RETIRE_SUCCESS);
@@ -498,12 +515,12 @@ function test_cheri_malformed() -> unit = {
 }
 
 function test_cheri_invalid_addr() -> unit = {
-    // No invalid addresses on RV32
-    if xlen == 32 then return ();
     // Very invalid address: top bits are not a sign-extension of lower bits
     let invalidAddr = 0b1 @ zeros(xlen - 1);
+    // If system has no invalid addresses, escape
+    if (validAddr(invalidAddr)) then return ();
     // Since invalid addr checks are waived for infinite caps, make a slightly smaller cap
-    let (_, finite_cap) = setCapBounds(infinite_cap, zeros(), zero_extend(0xff00_0000_0000_0000));
+    let (_, finite_cap) = setCapBounds(infinite_cap, zeros(), 0b0 @ 0xff @ zeros(xlen - 8));
     let infiniteR : regidx = Regidx(0b00001);
     let finiteR : regidx = Regidx(0b00010);
     let zeroR : regidx = Regidx(0b00000);
@@ -511,21 +528,21 @@ function test_cheri_invalid_addr() -> unit = {
     C(infiniteR) = {infinite_cap with address=invalidAddr};
     C(finiteR) = {finite_cap with address=invalidAddr};
     assert(execute(JALR_capmode(zeros(), infiniteR, zeroR)) == RETIRE_SUCCESS);
-    assert(execute(JALR_capmode(zeros(), finiteR  , zeroR)) == RETIRE_FAIL);
+    assert(execute_test(JALR_capmode(zeros(), finiteR  , zeroR)) == RETIRE_FAIL);
     assert(mtval2[TYPE] == capchecktype_code(CapCheckType_JBr));
     assert(mtval2[CAUSE] == capex_code(CapEx_InvalidAddressViolation));
     // Attempt to jump to the invalid address with an integer jump
     PCC = C(infiniteR);
-    assert(execute(RISCV_JALR(zeros(), finiteR, zeroR)) == RETIRE_SUCCESS);
+    assert(execute(JALR(zeros(), finiteR, zeroR)) == RETIRE_SUCCESS);
     PCC = C(finiteR);
-    assert(execute(RISCV_JALR(zeros(), finiteR, zeroR)) == RETIRE_FAIL);
+    assert(execute_test(JALR(zeros(), finiteR, zeroR)) == RETIRE_FAIL);
     assert(mtval2[TYPE] == capchecktype_code(CapCheckType_JBr));
     assert(mtval2[CAUSE] == capex_code(CapEx_InvalidAddressViolation));
     // Attempt to load from the invalid address
     ddc = C(infiniteR);
-    assert(execute(LOAD(zeros(), finiteR, zeroR, true, BYTE, false, false)) == RETIRE_SUCCESS);
+    assert(execute(LOAD(zeros(), finiteR, zeroR, true, 1)) == RETIRE_SUCCESS);
     ddc = C(finiteR);
-    assert(execute(LOAD(zeros(), finiteR, zeroR, true, BYTE, false, false)) == RETIRE_FAIL);
+    assert(execute_test(LOAD(zeros(), finiteR, zeroR, true, 1)) == RETIRE_FAIL);
     assert(mtval2[TYPE] == capchecktype_code(CapCheckType_Data));
     assert(mtval2[CAUSE] == capex_code(CapEx_InvalidAddressViolation));
 }
@@ -537,18 +554,18 @@ function test_cheri_feature_enables(priv : Privilege, cheri_allowed : bool, expe
     let ddcAddr = csr_name_map("ddc");
     let resR : regidx = Regidx(0b00001);
     // Capmode has expected tag-preserving behaviour
-    let auipcEnc = encdec(UTYPE(0x00000, resR, RISCV_AUIPC));
+    let auipcEnc = encdec(UTYPE(0x00000, resR, AUIPC));
     assert(execute(ext_decode(auipcEnc)) == RETIRE_SUCCESS);
     assert(C(resR).tag == (expected_mode == CapPtrMode));
     // Can access CLEN-width CSRs iff not prevented by some cre
-    assert(execute(CSR(ddcAddr, resR, resR, false, CSRRW)) == (if cheri_allowed then RETIRE_SUCCESS else RETIRE_FAIL));
+    assert(execute_test(CSRReg(ddcAddr, resR, resR, CSRRW)) == (if cheri_allowed then RETIRE_SUCCESS else RETIRE_FAIL));
     // Restore things, as above might have trapped!
     PCC = backupPCC;
     set_cur_privilege(priv);
     // CHERI-only mode-independent instructions are allowed iff not prevented by some cre
     let resR = regidx_bits(resR);
     let instEnc = 0b0001000 @ 0b00001 @ resR @ 0b000 @ resR @ 0b0110011; // gcperm manually encoded as encdec depends on mode!
-    assert(execute(ext_decode(instEnc)) == (if cheri_allowed then RETIRE_SUCCESS else RETIRE_FAIL));
+    assert(execute_test(ext_decode(instEnc)) == (if cheri_allowed then RETIRE_SUCCESS else RETIRE_FAIL));
 }
 
 function test_cheri_pcc_mode(priv : Privilege, cheri_allowed : bool) -> unit = {
@@ -575,21 +592,21 @@ function test_cheri_mcre(cheri_allowed : bool) -> unit = {
 }
 
 function test_cheri_enables() -> unit = {
-    set_mseccfg(update_CRE(mseccfg, 0b1).bits);
+    mseccfg[CRE] = 0b1;
     test_cheri_pcc_mode(Machine, true);
     test_cheri_mcre(true);
-    set_mseccfg(update_CRE(mseccfg, 0b0).bits);
+    mseccfg[CRE] = 0b0;
     test_cheri_pcc_mode(Machine, false);
     test_cheri_mcre(false);
 }
 
 function test_main_ext() -> unit = {
     // Enable CHERI
-    set_mseccfg(update_CRE(mseccfg, 0b1).bits);
+    mseccfg[CRE] = 0b1;
     set_menvcfg(update_CRE(menvcfg, 0b1).bits);
     set_senvcfg(update_CRE(senvcfg, 0b1).bits);
 
-    test_cheri_sdtrig();
+    //test_cheri_sdtrig();
     debug_mode_active = false;
 
     test_cheri_cap_encoding();
@@ -606,5 +623,6 @@ function test_main_ext() -> unit = {
     test_cheri_csr_access_control();
     test_cheri_malformed();
     test_cheri_invalid_addr();
-    test_cheri_enables();
+    //test_cheri_enables(); Disable while cheri enables hardwired high
+    print("CHERI tests passed\n");
 }

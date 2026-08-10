@@ -11,6 +11,8 @@ extern "C" {
 void model_init(void);
 void model_fini(void);
 
+unit ztest_main(unit);
+
 // The generated header does not include these variables.
 // TODO: We should avoid accessing variables directly.
 extern uint64_t zxlen;

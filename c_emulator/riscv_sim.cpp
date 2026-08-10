@@ -36,6 +36,7 @@ enum {
   OPT_ENABLE_EXPERIMENTAL_EXTENSIONS,
   OPT_PRINT_DTS,
   OPT_PRINT_ISA,
+  OPT_DO_SELF_TEST,
 };
 
 static bool do_show_times = false;
@@ -51,6 +52,8 @@ char *dtb_file = NULL;
 unsigned char *dtb = NULL;
 size_t dtb_len = 0;
 std::optional<rvfi_handler> rvfi;
+
+static bool do_self_test = false;
 
 char *sig_file = NULL;
 uint64_t mem_sig_start = 0;
@@ -124,6 +127,7 @@ static struct option options[] = {
 #endif
     {"print-device-tree",              no_argument,       0, OPT_PRINT_DTS      },
     {"print-isa-string",               no_argument,       0, OPT_PRINT_ISA      },
+    {"self-test",                      no_argument,       0, OPT_DO_SELF_TEST   },
     {0,                                0,                 0, 0                  }
 };
 
@@ -320,6 +324,9 @@ static int process_args(int argc, char **argv)
       trace_log_path = optarg;
       fprintf(stderr, "using %s for trace output.\n", trace_log_path);
       break;
+    case OPT_DO_SELF_TEST:
+      do_self_test = true;
+      break;
     case '?':
       print_usage(argv[0], EXIT_FAILURE);
       break;
@@ -333,8 +340,8 @@ static int process_args(int argc, char **argv)
   if (dtb_file)
     read_dtb(dtb_file);
 
-  bool no_elf_file_arg
-      = rvfi || do_print_dts || do_print_isa || do_validate_config;
+  bool no_elf_file_arg = rvfi || do_print_dts || do_print_isa
+      || do_validate_config || do_self_test;
   if (optind > argc || (optind == argc && !no_elf_file_arg)) {
     fprintf(stderr, "No elf file provided.\n");
     print_usage(argv[0], EXIT_SUCCESS);
@@ -697,6 +704,7 @@ int main(int argc, char **argv)
   }
 
   uint64_t entry = rvfi ? rvfi->get_entry()
+      : do_self_test    ? 0x80000000
                         : load_sail(initial_elf_file, /*main_file=*/true);
 
   /* Load any additional ELF files into memory */
@@ -712,13 +720,17 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
 
-  do {
-    run_sail();
-    if (rvfi) {
-      /* Reset for next test */
-      reinit_sail(entry, config_file);
-    }
-  } while (rvfi);
+  if (do_self_test) {
+    ztest_main(UNIT);
+  } else {
+    do {
+      run_sail();
+      if (rvfi) {
+        /* Reset for next test */
+        reinit_sail(entry, config_file);
+      }
+    } while (rvfi);
+  }
 
   model_fini();
   flush_logs();
