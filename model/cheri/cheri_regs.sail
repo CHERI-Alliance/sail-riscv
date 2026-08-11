@@ -79,7 +79,7 @@ function convertInvalidAddrCap(cap : Capability) -> Capability = {
 overload convertInvalidAddr = {convertInvalidAddrCap}
 
 function setCapCSRAddr(c : Capability, addr : CapAddrBits) -> Capability = {
-  let c = setCapAddrChecked(c, addr);
+  let c = setCapAddrChecked(c, addr, false);
   // For CSRs that do not hold all invalid addresses,
   // clear the tag if the address is invalid without infinite bounds
   clearTagIf(c, not(validAddr(c.address) | capBoundsInfinite(c)))

@@ -621,9 +621,9 @@ function setCapAddr(c : Capability, addr : CapAddrBits) -> (bool, Capability) = 
   (representable, newCap)
 }
 
-function setCapAddrChecked(c : Capability, addr : CapAddrBits) -> Capability = {
+function setCapAddrChecked(c : Capability, addr : CapAddrBits, allowSealedUnchanged : bool) -> Capability = {
   let (representable, newCap) = setCapAddr(c, addr);
-  clearTagIf(newCap, not(representable) | capIsSealed(c) | not(capReservedValid(c)))
+  clearTagIf(newCap, not(representable) | (capIsSealed(c) & (not(allowSealedUnchanged) | addr != c.address)) | not(capReservedValid(c)))
 }
 
 infix 1 >>_s
@@ -632,7 +632,7 @@ overload operator << = {sail_shiftleft}
 overload operator >>_s = {sail_arith_shiftright}
 
 function incCapAddrChecked(c : Capability, delta : CapAddrBits) -> Capability =
-  setCapAddrChecked(c, c.address + delta)
+  setCapAddrChecked(c, c.address + delta, false)
 
 function capToString(cap : Capability) -> string = {
   let (base_str, top_str, bounds_malformed) : (string, string, bool) = match getCapBoundsBits(cap) {
