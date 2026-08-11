@@ -59,21 +59,15 @@ but this is difficult
 */
 
 function clause execute (JAL(imm, rd)) = {
-  let target = PC + sign_extend(imm);
-  /* Extensions get the first checks on the prospective target address. */
-  match ext_control_check_pc(target) {
-    Ext_ControlAddr_Error(e) => Ext_ControlAddr_Check_Failure(e),
-    Ext_ControlAddr_OK(target) => {
-      /* Perform standard alignment check */
-      let target_bits = bits_of(target);
-      if bit_to_bool(target_bits[1]) & not(currentlyEnabled(Ext_Zca)) then {
-        Memory_Exception(target, E_Fetch_Addr_Align())
-      } else {
-        X(rd) = get_next_pc();
-        set_next_pc(target_bits);
-        RETIRE_SUCCESS
-      }
-    }
+  let target = Virtaddr(PC + sign_extend(imm));
+  /* Perform standard alignment check */
+  let target_bits = bits_of(target);
+  if bit_to_bool(target_bits[1]) & not(currentlyEnabled(Ext_Zca)) then {
+    Memory_Exception(target, E_Fetch_Addr_Align())
+  } else {
+    X(rd) = get_next_pc();
+    set_next_pc(target_bits);
+    RETIRE_SUCCESS
   }
 }
 
@@ -118,19 +112,13 @@ function clause execute (BTYPE(imm, rs2, rs1, op)) = {
     BGEU => X(rs1) >=_u X(rs2)
   };
   if taken then {
-    let target = PC + sign_extend(imm);
-    /* Extensions get the first checks on the prospective target address. */
-    match ext_control_check_pc(target) {
-      Ext_ControlAddr_Error(e) => Ext_ControlAddr_Check_Failure(e),
-      Ext_ControlAddr_OK(target) => {
-        let target_bits = bits_of(target);
-        if bit_to_bool(target_bits[1]) & not(currentlyEnabled(Ext_Zca)) then {
-          Memory_Exception(target, E_Fetch_Addr_Align())
-        } else {
-          set_next_pc(target_bits);
-          RETIRE_SUCCESS
-        }
-      }
+    let target = Virtaddr(PC + sign_extend(imm));
+    let target_bits = bits_of(target);
+    if bit_to_bool(target_bits[1]) & not(currentlyEnabled(Ext_Zca)) then {
+      Memory_Exception(target, E_Fetch_Addr_Align())
+    } else {
+      set_next_pc(target_bits);
+      RETIRE_SUCCESS
     }
   } else RETIRE_SUCCESS
 }

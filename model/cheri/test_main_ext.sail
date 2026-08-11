@@ -17,7 +17,6 @@ function execute_test(ast : instruction) -> ExecutionResult = {
   match execute(ast) {
     Retire_Success() => RETIRE_SUCCESS,
     Enter_Wait(_) => RETIRE_SUCCESS,
-    Ext_ControlAddr_Check_Failure(e) => { ext_handle_control_check_error(e); RETIRE_FAIL },
     Ext_XRET_Priv_Failure() => { ext_fail_xret_priv(); RETIRE_FAIL },
     Trap(priv, ctl, pc) => { set_next_pc(exception_handler(priv, ctl, pc)); RETIRE_FAIL },
     Memory_Exception(vaddr, e) => { handle_mem_exception(vaddr, e); RETIRE_FAIL },
@@ -528,16 +527,18 @@ function test_cheri_invalid_addr() -> unit = {
     Y(infiniteR) = {infinite_cap with address=invalidAddr};
     Y(finiteR) = {finite_cap with address=invalidAddr};
     assert(execute(JALR_capmode(zeros(), infiniteR, zeroR)) == RETIRE_SUCCESS);
-    assert(execute_test(JALR_capmode(zeros(), finiteR  , zeroR)) == RETIRE_FAIL);
-    assert(mtval2[TYPE] == capchecktype_code(CapCheckType_JBr));
-    assert(mtval2[CAUSE] == capex_code(CapEx_InvalidAddressViolation));
+    // Jump itself should retire
+    assert(execute(JALR_capmode(zeros(), finiteR  , zeroR)) == RETIRE_SUCCESS);
+    // Subsequent fetch must trap
+    tick_pc();
+    assert(fetch() == F_Ext_Error(CapEx_InvalidAddressViolation));
     // Attempt to jump to the invalid address with an integer jump
     PCC = Y(infiniteR);
     assert(execute(JALR(zeros(), finiteR, zeroR)) == RETIRE_SUCCESS);
     PCC = Y(finiteR);
-    assert(execute_test(JALR(zeros(), finiteR, zeroR)) == RETIRE_FAIL);
-    assert(mtval2[TYPE] == capchecktype_code(CapCheckType_JBr));
-    assert(mtval2[CAUSE] == capex_code(CapEx_InvalidAddressViolation));
+    // Subsequent fetch must trap
+    tick_pc();
+    assert(fetch() == F_Ext_Error(CapEx_InvalidAddressViolation));
     // Attempt to load from the invalid address
     ddc = Y(infiniteR);
     assert(execute(LOAD(zeros(), finiteR, zeroR, true, 1)) == RETIRE_SUCCESS);
@@ -600,6 +601,77 @@ function test_cheri_enables() -> unit = {
     test_cheri_mcre(false);
 }
 
+function test_cheri_bad_jump() -> unit = {
+    // Make a small cap
+    let (_, finite_cap) = setCapBounds(infinite_cap, zeros(), zero_extend(0x100));
+    let infiniteR : regidx = Regidx(0b00001);
+    let finiteR : regidx = Regidx(0b00010);
+    let zeroR : regidx = Regidx(0b00000);
+    let bigR : regidx = Regidx(0b00011);
+    // Attempt to jump in-bounds
+    Y(infiniteR) = infinite_cap;
+    Y(finiteR) = finite_cap;
+
+    // In-bounds cap jump
+    assert(execute(JALR_capmode(zeros(), infiniteR, zeroR)) == RETIRE_SUCCESS);
+    // Subsequent fetch should succeed
+    tick_pc();
+    assert(PCC.tag);
+    assert(match fetch() { F_Ext_Error(_) => false, _ => true });
+
+    // Out-of-bounds cap jump
+    // Jump itself should retire
+    assert(execute(JALR_capmode(0x200, finiteR, zeroR)) == RETIRE_SUCCESS);
+    // Subsequent fetch must trap
+    tick_pc();
+    assert(fetch() == F_Ext_Error(CapEx_LengthViolation));
+
+    // Attempt to jump out of PCC
+    PCC = finite_cap;
+    // Jump itself should retire
+    assert(execute(JALR(0x200, zeroR, zeroR)) == RETIRE_SUCCESS);
+    // Subsequent fetch must trap
+    tick_pc();
+    assert(fetch() == F_Ext_Error(CapEx_LengthViolation));
+
+    // Jump so far it must make PCC unrepresentable
+    PCC = finite_cap;
+    X(bigR) = zero_extend(0x80000000);
+    // Jump itself should retire
+    assert(execute(JALR(zeros(), bigR, zeroR)) == RETIRE_SUCCESS);
+    // Subsequent fetch must trap
+    tick_pc();
+    assert(fetch() == F_Ext_Error(CapEx_TagViolation));
+
+    // Jump to sealed cap (0 imm) should succeed
+    Y(infiniteR) = sealCap(infinite_cap);
+    assert(execute(JALR_capmode(zeros(), infiniteR, zeroR)) == RETIRE_SUCCESS);
+    // Subsequent fetch should succeed
+    tick_pc();
+    assert(PCC.tag);
+    assert(not(PCC.sealed));
+    assert(match fetch() { F_Ext_Error(_) => false, _ => true });
+
+    PCC = infinite_cap;
+    // Jump to sealed cap (non-zero imm) should leave PCC sealed
+    assert(execute(JALR_capmode(0x010, infiniteR, zeroR)) == RETIRE_SUCCESS);
+    // Subsequent fetch must trap
+    tick_pc();
+    assert(not(PCC.tag));
+    assert(PCC.sealed);
+    assert(fetch() == F_Ext_Error(CapEx_SealViolation));
+
+    PCC = infinite_cap;
+    // Jump to odd address sealed cap (any imm) should leave PCC sealed
+    Y(infiniteR) = sealCap({infinite_cap with address = zeros() @ 0b1});
+    assert(execute(JALR_capmode(0x000, infiniteR, zeroR)) == RETIRE_SUCCESS);
+    // Subsequent fetch must trap
+    tick_pc();
+    assert(not(PCC.tag));
+    assert(PCC.sealed);
+    assert(fetch() == F_Ext_Error(CapEx_SealViolation));
+}
+
 function test_main_ext() -> unit = {
     // Enable CHERI
     mseccfg[CRE] = 0b1;
@@ -623,6 +695,7 @@ function test_main_ext() -> unit = {
     test_cheri_csr_access_control();
     test_cheri_malformed();
     test_cheri_invalid_addr();
+    test_cheri_bad_jump();
     //test_cheri_enables(); Disable while cheri enables hardwired high
     print("CHERI tests passed\n");
 }

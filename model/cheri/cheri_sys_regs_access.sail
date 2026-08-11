@@ -41,7 +41,7 @@ function tvecc_vector_range_check(tvecc: Capability) -> Capability = {
 function legalize_tvecc(o : Capability, v : Capability) -> Capability = {
   let new_tvec = v.address;
   let legalized_tvec = legalize_tvec(Mk_Mtvec(o.address), new_tvec);
-  tvecc_vector_range_check(setCapAddrChecked(v, legalized_tvec.bits))
+  tvecc_vector_range_check(setCapAddrChecked(v, legalized_tvec.bits, false))
 }
 
 function get_mtvec() -> xlenbits = mtvecc.address
@@ -71,11 +71,11 @@ function get_mscratch() -> xlenbits = mscratchc.address
 function get_sscratch() -> xlenbits = sscratchc.address
 
 function set_mscratch(value : xlenbits) -> unit = {
-  mscratchc = setCapAddrChecked(mscratchc, value);
+  mscratchc = setCapAddrChecked(mscratchc, value, false);
 }
 
 function set_sscratch(value : xlenbits) -> unit = {
-  sscratchc = setCapAddrChecked(sscratchc, value);
+  sscratchc = setCapAddrChecked(sscratchc, value, false);
 }
 
 function set_mscratchc(value : Capability) -> unit = {
@@ -96,17 +96,11 @@ function get_sepc() -> xlenbits = align_pc(sepcc.address)
 // This may clear the tag on read and cannot be done on write, since misa.C
 // can still change between the write and a later read (in which case bit 1
 // would report a different value).
-// Only call setCapAddrChecked() if the address actually changed to avoid
-// invalidating sentries that already have the correct address.
-function get_mepcc() -> Capability = {
-  let aligned = align_pc(mepcc.address);
-  if aligned == mepcc.address then mepcc else setCapAddrChecked(mepcc, aligned)
-}
+function get_mepcc() -> Capability =
+  setCapAddrChecked(mepcc, align_pc(mepcc.address), true)
 
-function get_sepcc() -> Capability = {
-  let aligned = align_pc(sepcc.address);
-  if aligned == sepcc.address then sepcc else setCapAddrChecked(sepcc, aligned)
-}
+function get_sepcc() -> Capability =
+  setCapAddrChecked(sepcc, align_pc(sepcc.address), true)
 
 function set_mepc(value : xlenbits) -> unit = {
   mepcc = setCapCSRAddr(mepcc, legalize_xepc(convertInvalidAddr(value)));
@@ -150,11 +144,11 @@ function set_stdc(value : Capability) -> unit = {
 }
 
 function set_mtdc_xlen(value : xlenbits) -> unit = {
-  mtdc = setCapAddrChecked(mtdc, value);
+  mtdc = setCapAddrChecked(mtdc, value, false);
 }
 
 function set_stdc_xlen(value : xlenbits) -> unit = {
-  stdc = setCapAddrChecked(stdc, value);
+  stdc = setCapAddrChecked(stdc, value, false);
 }
 
 /******************************* xTID[C] *******************************/
@@ -179,15 +173,15 @@ function set_utidc(value : Capability) -> unit = {
 }
 
 function set_mtid(value : xlenbits) -> unit = {
-  mtidc = setCapAddrChecked(mtidc, value);
+  mtidc = setCapAddrChecked(mtidc, value, false);
 }
 
 function set_stid(value : xlenbits) -> unit = {
-  stidc = setCapAddrChecked(stidc, value);
+  stidc = setCapAddrChecked(stidc, value, false);
 }
 
 function set_utid(value : xlenbits) -> unit = {
-  utidc = setCapAddrChecked(utidc, value);
+  utidc = setCapAddrChecked(utidc, value, false);
 }
 
 /******************************* xenvcfg *******************************/

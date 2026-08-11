@@ -43,11 +43,7 @@ union clause instruction = JAL_capmode : (bits(21), regidx)
 function clause execute(JAL_capmode(imm, cd)) = {
   let off : xlenbits = sign_extend(imm);
   let newPC = PC + off;
-  if not(validAddr(newPC) | capBoundsInfinite(PCC)) then {
-    CHERI_Exception(CapCheckType_JBr, CapEx_InvalidAddressViolation, Virtaddr(zeros()))
-  } else if not(inCapBounds(PCC, newPC, min_instruction_bytes())) then {
-    CHERI_Exception(CapCheckType_JBr, CapEx_LengthViolation, Virtaddr(zeros()))
-  } else if newPC[1] == bitone & not(currentlyEnabled(Ext_Zca)) then {
+  if newPC[1] == bitone & not(currentlyEnabled(Ext_Zca)) then {
     Memory_Exception(Virtaddr(newPC), E_Fetch_Addr_Align())
   } else {
     let (success, linkCap) = setCapAddr(PCC, nextPC); /* Note that nextPC accounts for compressed instructions */
@@ -81,17 +77,7 @@ function clause execute(JALR_capmode(imm, cs1, cd)) = {
   let off : xlenbits = sign_extend(imm);
   let newPC = [cs1_val.address + off with 0 = bitzero]; /* clear bit zero as for RISCV JALR */
 
-  if not(capTaggedAndReservedValid(cs1_val)) then {
-    CHERI_Exception(CapCheckType_JBr, CapEx_TagViolation, Virtaddr(zeros()))
-  } else if capIsSealed(cs1_val) & imm != zeros() then {
-    CHERI_Exception(CapCheckType_JBr, CapEx_SealViolation, Virtaddr(zeros()))
-  } else if not(canX(cs1_val)) then {
-    CHERI_Exception(CapCheckType_JBr, CapEx_PermissionViolation, Virtaddr(zeros()))
-  } else if not(validAddr(newPC) | capBoundsInfinite(cs1_val)) then {
-    CHERI_Exception(CapCheckType_JBr, CapEx_InvalidAddressViolation, Virtaddr(zeros()))
-  } else if not(inCapBounds(cs1_val, newPC, min_instruction_bytes())) then {
-    CHERI_Exception(CapCheckType_JBr, CapEx_LengthViolation, Virtaddr(zeros()))
-  } else if newPC[1] == bitone & not(currentlyEnabled(Ext_Zca)) then {
+  if newPC[1] == bitone & not(currentlyEnabled(Ext_Zca)) then {
     Memory_Exception(Virtaddr(newPC), E_Fetch_Addr_Align())
   } else {
     let (success, linkCap) = setCapAddr(PCC, nextPC); /* Note that nextPC accounts for compressed instructions */
@@ -100,10 +86,11 @@ function clause execute(JALR_capmode(imm, cs1, cd)) = {
     Y(cd) = sealCap(linkCap);
     set_next_pc(newPC);
 
+    // Unseal the target capability if permitted
+    let newPCC = if off == zeros() & cs1_val.address[0] == bitzero then unsealCap(cs1_val) else cs1_val;
+
     // Construct the new capability pointing to the address + offset.
-    let (representable, newPCC) = setCapAddr(cs1_val, newPC);
-    assert(representable, "If bounds checks passed then new PCC must be representable");
-    set_next_pcc(unsealCap(newPCC));
+    set_next_pcc(setCapAddrChecked(newPCC, newPC, false));
 
     RETIRE_SUCCESS
   }
@@ -394,7 +381,7 @@ union clause instruction = SCADDR : (regidx, regidx, regidx)
  * cs1 or if cs1 is sealed.
  */
 function clause execute (SCADDR(cd, cs1, rs2)) = {
-  Y(cd) = setCapAddrChecked(Y(cs1), X(rs2));
+  Y(cd) = setCapAddrChecked(Y(cs1), X(rs2), false);
   RETIRE_SUCCESS
 }
 
