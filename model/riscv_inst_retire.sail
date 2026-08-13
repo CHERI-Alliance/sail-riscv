@@ -21,7 +21,7 @@ union ExecutionResult = {
   Trap                           : (Privilege, ctl_result, xlenbits),
   Memory_Exception               : (virtaddr, ExceptionType),
   Translate_Exception            : (virtaddr, ExceptionType, ext_ptw),
-  CHERI_Exception                : (CapCheckType, CapEx, virtaddr),
+  CHERI_Exception                : (CapCheckType, virtaddr),
 
   // Did not retire for custom reason.
   Ext_CSR_Check_Failure          : ext_csr_exc_type,

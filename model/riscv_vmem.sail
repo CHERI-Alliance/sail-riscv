@@ -356,7 +356,7 @@ function translateAddr(
 
   let svAddr = bits_of(vAddr)[sv_width - 1 .. 0];
   if bits_of(vAddr) != sign_extend(svAddr) then {
-    Err(translationException(ac, PTW_Invalid_Addr()), init_ext_ptw)
+    Err(translationException(ac, PTW_Invalid_Addr(), init_ext_ptw), init_ext_ptw)
   } else {
     let mxr    = mstatus[MXR] == 0b1;
     let do_sum = mstatus[SUM] == 0b1;
@@ -383,7 +383,7 @@ function translateAddr(
         // the assertion above.
         Ok(Physaddr(zero_extend(paddr)), pbmt, ext_ptw)
       },
-      Err(f, ext_ptw)  => Err(translationException(ac, f), ext_ptw)
+      Err(f, ext_ptw) => Err(translationException(ac, f, ext_ptw), ext_ptw)
     }
   }
 }

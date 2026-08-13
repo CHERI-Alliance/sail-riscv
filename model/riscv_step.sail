@@ -187,8 +187,8 @@ function try_step(step_no : nat, exit_wait : bool) -> bool = {
     Step_Execute(Trap(priv, ctl, pc), _) => set_next_pc(exception_handler(priv, ctl, pc)),
     Step_Execute(Memory_Exception(vaddr, e), _) => handle_mem_exception(vaddr, e),
     Step_Execute(Illegal_Instruction(), instbits) => handle_illegal(instbits),
-    Step_Execute(Translate_Exception(vaddr, exc, ext_ptw), _) => handle_translate_exception(vaddr, exc, ext_ptw),
-    Step_Execute(CHERI_Exception(ty, exc, vaddr), _) => handle_cheri_exception(ty, exc, vaddr),
+    Step_Execute(Translate_Exception(vaddr, exc, ext_ptw), _) => handle_translate_exception(vaddr, exc),
+    Step_Execute(CHERI_Exception(ty, vaddr), _) => handle_cheri_exception(ty, vaddr),
     Step_Execute(Enter_Wait(wr), instbits) => {
       if wait_is_nop(wr) then {
         // This is the same as the RETIRE_OK case.

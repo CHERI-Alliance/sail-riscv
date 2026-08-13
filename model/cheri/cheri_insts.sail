@@ -620,45 +620,38 @@ function clause execute (SENTRY(cd, cs1)) = {
 
 enum CapAccessType = { Cap_Read, Cap_Write, Cap_ReadWrite }
 
-function cap_mem_access_exception(auth_val : Capability, Virtaddr(vaddr) : virtaddr, acc_type : CapAccessType) -> option(CapEx) = {
+function cap_mem_access_authorised(auth_val : Capability, Virtaddr(vaddr) : virtaddr, acc_type : CapAccessType) -> bool = {
   assert(xlen >= 32);
   assert(cap_size <= cap_max_len);
-  if not(capTaggedAndReservedValid(auth_val)) then {
-    Some(CapEx_TagViolation)
-  } else if capIsSealed(auth_val) then {
-    Some(CapEx_SealViolation)
-  } else if not((match acc_type {
+  capTaggedAndReservedValid(auth_val) &
+  not(capIsSealed(auth_val)) &
+  (match acc_type {
     Cap_Read => canR(auth_val),
     Cap_Write => canW(auth_val),
     Cap_ReadWrite => canR(auth_val) & canW(auth_val),
-  }) : bool) then {
-    Some(CapEx_PermissionViolation)
-  } else if not(validAddrRange(vaddr, cap_size) | capBoundsInfinite(auth_val)) then {
-    Some(CapEx_InvalidAddressViolation)
-  } else if not(inCapBounds(auth_val, vaddr, cap_size)) then {
-    Some(CapEx_LengthViolation)
-  } else {
-    None()
-  }
+  }) : bool &
+  (validAddrRange(vaddr, cap_size) | capBoundsInfinite(auth_val)) &
+  inCapBounds(auth_val, vaddr, cap_size)
 }
 
 function cap_mem_standard_errors(auth_val : Capability, vaddr : virtaddr, acc_type : CapAccessType) -> option(ExecutionResult) = {
-  match cap_mem_access_exception(auth_val, vaddr, acc_type) {
-    Some(e) => {
-      Some(CHERI_Exception(CapCheckType_Data, e, vaddr))
-    },
-    None() => {
-      // All loads and stores of capabilities must be aligned.
-      if not(is_aligned_addr(vaddr, cap_size)) then {
-        Some(Memory_Exception(vaddr, match acc_type {
-          Cap_Read => E_Load_Access_Fault(),
-          Cap_Write => E_SAMO_Access_Fault(),
-          Cap_ReadWrite => E_SAMO_Access_Fault(),
-        }))
-      } else {
-        None()
-      }
-    },
+  if not(cap_mem_access_authorised(auth_val, vaddr, acc_type)) then {
+    Some(CHERI_Exception(match acc_type {
+      Cap_Read => CapCheckType_Ld(),
+      Cap_Write => CapCheckType_St(),
+      Cap_ReadWrite => CapCheckType_St()
+    }, vaddr))
+  } else {
+    // All loads and stores of capabilities must be aligned.
+    if not(is_aligned_addr(vaddr, cap_size)) then {
+      Some(Memory_Exception(vaddr, match acc_type {
+        Cap_Read => E_Load_Access_Fault(),
+        Cap_Write => E_SAMO_Access_Fault(),
+        Cap_ReadWrite => E_SAMO_Access_Fault(),
+      }))
+    } else {
+      None()
+    }
   }
 }
 
@@ -692,13 +685,13 @@ function clause execute (LoadResCap(cd, rs1_cs1, aq, rl)) = {
       // If we don't have C capability then the tag will always be cleared and
       // it is treated as an untagged load.
       match translateAddr(vaddr, Read(if canC(auth_val) then Tagged else Data)) {
-        Err(e, ext_ptw)          => Translate_Exception(vaddr, e, ext_ptw),
+        Err(e, ext_ptw)         => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, ext_ptw) => {
           let c = mem_read_cap(Read(Data), addr, pbmt, aq, aq & rl, true);
           match c {
             Ok(v) => {
               if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
-                Translate_Exception(vaddr, E_Load_Page_Fault(), { ext_ptw with cheri_page_fault = PageFault_Cheri })
+                Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
               } else {
                 load_reservation(bits_of_physaddr(addr));
                 let cr = clearTagIf(v, ext_ptw.tagged_load_behaviour == TaggedLoadClear | not(canC(auth_val)));
@@ -750,14 +743,14 @@ function clause execute LoadCapImm(cd, rs1_cs1, imm) = {
       // If we don't have C capability then the tag will always be cleared and
       // it is treated as an untagged load.
       match translateAddr(vaddr, Read(if canC(auth_val) then Tagged else Data)) {
-        Err(e, ext_ptw)          => Translate_Exception(vaddr, e, ext_ptw),
+        Err(e, ext_ptw)         => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, ext_ptw) => {
           let aq = false;
           let rl = false;
           match mem_read_cap(Read(Data), addr, pbmt, aq, aq & rl, false) {
             Ok(v) => {
               if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
-                Translate_Exception(vaddr, E_Load_Page_Fault(), { ext_ptw with cheri_page_fault = PageFault_Cheri })
+                Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
               } else {
                 let cr = clearTagIf(v, ext_ptw.tagged_load_behaviour == TaggedLoadClear | not(canC(auth_val)));
                 Y(cd) = legalizeLoadedPermissions(cr, auth_val);
@@ -809,7 +802,7 @@ function clause execute StoreCapImm(cs2, rs1_cs1, imm) = {
       let cs2_val = legalizeStoredPermissions(cs2_val, auth_val);
 
       match translateAddr(vaddr, Write(if cs2_val.tag then Tagged else Data)) {
-        Err(e, ext_ptw)    => Translate_Exception(vaddr, e, ext_ptw),
+        Err(e, ext_ptw)   => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, _) => {
           let aq = false;
           let rl = false;
@@ -861,7 +854,7 @@ function clause execute StoreCondCap(rd, cs2, rs1_cs1, aq, rl) = {
       let cs2_val = legalizeStoredPermissions(cs2_val, auth_val);
 
       match translateAddr(vaddr, Write(if cs2_val.tag then Tagged else Data)) {
-        Err(e, ext_ptw)    => Translate_Exception(vaddr, e, ext_ptw),
+        Err(e, ext_ptw)   => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, _) => {
           if not(match_reservation(bits_of_physaddr(addr))) then {
             /* cannot happen in rmem */
@@ -926,7 +919,7 @@ function clause execute AMOSwapCap(cd, cs2, rs1_cs1, aq, rl) = {
       let typ = ReadWrite(if canC(auth_val) then Tagged else Data, if cs2_val.tag then Tagged else Data);
 
       match translateAddr(vaddr, typ) {
-        Err(e, ext_ptw)          => Translate_Exception(vaddr, e, ext_ptw),
+        Err(e, ext_ptw)         => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, ext_ptw) => {
           match mem_write_ea_cap(addr, aq & rl, rl, false) {
             Err(e) => Memory_Exception(vaddr, e),
@@ -936,7 +929,7 @@ function clause execute AMOSwapCap(cd, cs2, rs1_cs1, aq, rl) = {
                   match mem_write_cap(addr, pbmt, cs2_val, aq & rl, rl, false) {
                     Ok(_) => {
                       if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
-                        Translate_Exception(vaddr, E_Load_Page_Fault(), { ext_ptw with cheri_page_fault = PageFault_Cheri })
+                        Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
                       } else {
                         let cr = clearTagIf(v, ext_ptw.tagged_load_behaviour == TaggedLoadClear | not(canC(auth_val)));
                         Y(cd) = legalizeLoadedPermissions(cr, auth_val);
