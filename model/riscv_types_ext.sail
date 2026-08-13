@@ -46,7 +46,7 @@ val ext_exc_type_of_bits : exc_code -> ext_exc_type
 function ext_exc_type_of_bits(e) = internal_error(__FILE__, __LINE__, "unknown exception type")
 
 /* Default conversion of extension exceptions to integers */
-val num_of_ext_exc_type : ext_exc_type -> range(0, xlen - 1)
+val num_of_ext_exc_type : ext_exc_type -> range(0, 63)
 function num_of_ext_exc_type(e) = 24 /* First code for a custom extension */
 
 /* Default conversion of extension exceptions to strings */

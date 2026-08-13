@@ -17,7 +17,7 @@ function ext_fail_xret_priv () : unit -> unit = ()
 
 function ext_ptw_exception_info(ext_ptw : ext_ptw) -> ext_exception = ()
 
-function handle_trap_extension(p : Privilege, pc : xlenbits, u : option(unit)) -> unit = ()
+function handle_trap_extension(p : Privilege, pc : xlenbits) -> unit = ()
 function handle_nmi_extension(pc : xlenbits, handler_pc : xlenbits) -> unit = ()
 
 /* used for traps and ECALL */

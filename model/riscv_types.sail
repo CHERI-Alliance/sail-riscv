@@ -203,7 +203,7 @@ function exceptionType_of_bits(e) =
     _ => E_Extension(ext_exc_type_of_bits(e))
   }
 
-val num_of_ExceptionType : ExceptionType -> {'n, (0 <= 'n < xlen). int('n)}
+val num_of_ExceptionType : ExceptionType -> {'n, (0 <= 'n < 64). int('n)}
 function num_of_ExceptionType(e) =
   match (e) {
     E_Fetch_Addr_Align()   => 0,

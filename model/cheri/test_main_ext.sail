@@ -21,19 +21,21 @@ function execute_test(ast : instruction) -> ExecutionResult = {
     Trap(priv, ctl, pc) => { set_next_pc(exception_handler(priv, ctl, pc)); RETIRE_FAIL },
     Memory_Exception(vaddr, e) => { handle_mem_exception(vaddr, e); RETIRE_FAIL },
     Illegal_Instruction() => { handle_illegal(zeros()); RETIRE_FAIL },
-    Translate_Exception(vaddr, exc, e_ptw) => { handle_translate_exception(vaddr, exc, e_ptw); RETIRE_FAIL },
-    CHERI_Exception(ty, exc, vaddr) => { handle_cheri_exception(ty, exc, vaddr); RETIRE_FAIL },
+    Translate_Exception(vaddr, exc, _) => { handle_translate_exception(vaddr, exc); RETIRE_FAIL },
+    CHERI_Exception(ty, vaddr) => { handle_cheri_exception(ty, vaddr); RETIRE_FAIL },
     Ext_CSR_Check_Failure(fail_type) => { ext_check_CSR_fail(fail_type); RETIRE_FAIL },
     Ext_DataAddr_Check_Failure(e) => { ext_handle_data_check_error(e); RETIRE_FAIL },
   }
 }
 
-function test_cheri_xtval2() -> unit = {
-    // Check that CHERI exceptions are reported in MTVAL2
+function test_cheri_fault() -> unit = {
+    // Check that CHERI exceptions are reported with their code
     PCC = {setCapMode(PCC, CapPtrMode)};
     assert(execute_test(LoadCapImm(zreg, zreg, zeros())) == RETIRE_FAIL); // Throw tag exception
-    assert(mtval2[TYPE] == capchecktype_code(CapCheckType_Data));
-    assert(mtval2[CAUSE] == capex_code(CapEx_TagViolation));
+    assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(CapCheckType_Ld()))));
+    assert(execute_test(StoreCapImm(zreg, zreg, zeros())) == RETIRE_FAIL); // Throw tag exception
+    assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(CapCheckType_St()))));
+    // TODO test PTE exceptions
 }
 
 //function test_cheri_sdtrig() -> unit = {
@@ -313,8 +315,7 @@ function test_cheri_circular() -> unit = {
     let (_, capTest) = setCapBounds(infinite_cap, base, top);
     Y(capR) = { capTest with address = ones(sizeof(xlen)) };
     assert(execute_test(LOAD(zeros(), capR, valR, true, 2)) == RETIRE_FAIL);
-    assert(mtval2[TYPE] == capchecktype_code(CapCheckType_Data));
-    assert(mtval2[CAUSE] == capex_code(CapEx_LengthViolation));
+    assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(CapCheckType_Ld()))));
 }
 
 function test_cheri_ylen_csr() -> unit = {
@@ -407,7 +408,7 @@ function assert_behaviour(inCap : Capability,
                           capR : regidx,
                           outR : regidx,
                           instruction : instruction,
-                          exc : option(CapEx),
+                          exc : option(CapCheckType),
                           outIsCap : bool,
                           outCap : Capability,
                           outBits : xlenbits) -> unit = {
@@ -424,8 +425,7 @@ function assert_behaviour(inCap : Capability,
       },
       Some(code) => {
         assert(ret == RETIRE_FAIL);
-        assert(mcause[Cause] == zero_extend (0x1C));
-        assert(mtval2[CAUSE] == capex_code(code));
+        assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(code))));
       }
     };
 }
@@ -498,9 +498,9 @@ function test_cheri_malformed() -> unit = {
 
     // Dereference checks all the fields.
     let instr = LoadCapImm(outR, capR, zeros());
-    assert_behaviour(badBoundsCap  , capR, outR, instr, Some(CapEx_LengthViolation)    , false, undefined, undefined);
-    assert_behaviour(badPermsCap   , capR, outR, instr, Some(CapEx_PermissionViolation), false, undefined, undefined);
-    assert_behaviour(badReservedCap, capR, outR, instr, Some(CapEx_TagViolation)       , false, undefined, undefined);
+    assert_behaviour(badBoundsCap  , capR, outR, instr, Some(CapCheckType_Ld()), false, undefined, undefined);
+    assert_behaviour(badPermsCap   , capR, outR, instr, Some(CapCheckType_Ld()), false, undefined, undefined);
+    assert_behaviour(badReservedCap, capR, outR, instr, Some(CapCheckType_Ld()), false, undefined, undefined);
 
     // CSR writes check all the fields
     write_ylen_csr(csr_name_map("ddc"), badBoundsCap);
@@ -531,21 +531,20 @@ function test_cheri_invalid_addr() -> unit = {
     assert(execute(JALR_capmode(zeros(), finiteR  , zeroR)) == RETIRE_SUCCESS);
     // Subsequent fetch must trap
     tick_pc();
-    assert(fetch() == F_Ext_Error(CapEx_InvalidAddressViolation));
+    assert(fetch() == F_Ext_Error());
     // Attempt to jump to the invalid address with an integer jump
     PCC = Y(infiniteR);
     assert(execute(JALR(zeros(), finiteR, zeroR)) == RETIRE_SUCCESS);
     PCC = Y(finiteR);
     // Subsequent fetch must trap
     tick_pc();
-    assert(fetch() == F_Ext_Error(CapEx_InvalidAddressViolation));
+    assert(fetch() == F_Ext_Error());
     // Attempt to load from the invalid address
     ddc = Y(infiniteR);
     assert(execute(LOAD(zeros(), finiteR, zeroR, true, 1)) == RETIRE_SUCCESS);
     ddc = Y(finiteR);
     assert(execute_test(LOAD(zeros(), finiteR, zeroR, true, 1)) == RETIRE_FAIL);
-    assert(mtval2[TYPE] == capchecktype_code(CapCheckType_Data));
-    assert(mtval2[CAUSE] == capex_code(CapEx_InvalidAddressViolation));
+    assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(CapCheckType_Ld()))));
 }
 
 function test_cheri_feature_enables(priv : Privilege, cheri_allowed : bool, expected_mode : ExecutionMode) -> unit = {
@@ -617,14 +616,15 @@ function test_cheri_bad_jump() -> unit = {
     // Subsequent fetch should succeed
     tick_pc();
     assert(PCC.tag);
-    assert(match fetch() { F_Ext_Error(_) => false, _ => true });
+    assert(fetch() != F_Ext_Error());
 
     // Out-of-bounds cap jump
     // Jump itself should retire
     assert(execute(JALR_capmode(0x200, finiteR, zeroR)) == RETIRE_SUCCESS);
     // Subsequent fetch must trap
     tick_pc();
-    assert(fetch() == F_Ext_Error(CapEx_LengthViolation));
+    assert(PCC.tag);
+    assert(fetch() == F_Ext_Error());
 
     // Attempt to jump out of PCC
     PCC = finite_cap;
@@ -632,7 +632,8 @@ function test_cheri_bad_jump() -> unit = {
     assert(execute(JALR(0x200, zeroR, zeroR)) == RETIRE_SUCCESS);
     // Subsequent fetch must trap
     tick_pc();
-    assert(fetch() == F_Ext_Error(CapEx_LengthViolation));
+    assert(PCC.tag);
+    assert(fetch() == F_Ext_Error());
 
     // Jump so far it must make PCC unrepresentable
     PCC = finite_cap;
@@ -641,7 +642,8 @@ function test_cheri_bad_jump() -> unit = {
     assert(execute(JALR(zeros(), bigR, zeroR)) == RETIRE_SUCCESS);
     // Subsequent fetch must trap
     tick_pc();
-    assert(fetch() == F_Ext_Error(CapEx_TagViolation));
+    assert(not(PCC.tag));
+    assert(fetch() == F_Ext_Error());
 
     // Jump to sealed cap (0 imm) should succeed
     Y(infiniteR) = sealCap(infinite_cap);
@@ -650,7 +652,7 @@ function test_cheri_bad_jump() -> unit = {
     tick_pc();
     assert(PCC.tag);
     assert(not(PCC.sealed));
-    assert(match fetch() { F_Ext_Error(_) => false, _ => true });
+    assert(fetch() != F_Ext_Error());
 
     PCC = infinite_cap;
     // Jump to sealed cap (non-zero imm) should leave PCC sealed
@@ -659,7 +661,7 @@ function test_cheri_bad_jump() -> unit = {
     tick_pc();
     assert(not(PCC.tag));
     assert(PCC.sealed);
-    assert(fetch() == F_Ext_Error(CapEx_SealViolation));
+    assert(fetch() == F_Ext_Error());
 
     PCC = infinite_cap;
     // Jump to odd address sealed cap (any imm) should leave PCC sealed
@@ -669,7 +671,7 @@ function test_cheri_bad_jump() -> unit = {
     tick_pc();
     assert(not(PCC.tag));
     assert(PCC.sealed);
-    assert(fetch() == F_Ext_Error(CapEx_SealViolation));
+    assert(fetch() == F_Ext_Error());
 }
 
 function test_main_ext() -> unit = {
@@ -683,7 +685,7 @@ function test_main_ext() -> unit = {
 
     test_cheri_cap_encoding();
     test_cheri_cram();
-    test_cheri_xtval2();
+    test_cheri_fault();
     test_cheri_nofastrep();
     test_cheri_zba();
     test_cheri_l8();

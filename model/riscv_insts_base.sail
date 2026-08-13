@@ -513,8 +513,7 @@ function clause execute ECALL() = {
                       Supervisor => E_S_EnvCall(),
                       Machine    => E_M_EnvCall()
                     },
-             excinfo = (None() : option(xlenbits)),
-             ext     = None() };
+             excinfo = (None() : option(xlenbits)) };
   Trap(cur_privilege(), CTL_TRAP(t), PC)
 }
 

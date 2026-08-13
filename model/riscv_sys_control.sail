@@ -208,7 +208,7 @@ function track_trap(p : Privilege) -> unit = {
 }
 
 /* handle exceptional ctl flow by updating nextPC and operating privilege */
-function trap_handler(del_priv : Privilege, intr : bool, c : exc_code, pc : xlenbits, info : option(xlenbits), ext : option(ext_exception))
+function trap_handler(del_priv : Privilege, intr : bool, c : exc_code, pc : xlenbits, info : option(xlenbits))
                      -> xlenbits = {
   trap_callback();
   if   get_config_print_platform()
@@ -257,7 +257,7 @@ function trap_handler(del_priv : Privilege, intr : bool, c : exc_code, pc : xlen
     User => internal_error(__FILE__, __LINE__, "Invalid privilege level"),
   };
 
-  handle_trap_extension(del_priv, pc, ext);
+  handle_trap_extension(del_priv, pc);
 
   newPc
 }
@@ -270,7 +270,7 @@ function exception_handler(cur_priv : Privilege, ctl : ctl_result,
       if   get_config_print_platform()
       then print_platform("trapping from " ^ to_str(cur_priv) ^ " to " ^ to_str(del_priv)
                           ^ " to handle " ^ to_str(e.trap));
-      trap_handler(del_priv, false, exceptionType_to_bits(e.trap), pc, e.excinfo, e.ext)
+      trap_handler(del_priv, false, exceptionType_to_bits(e.trap), pc, e.excinfo)
     },
     (_, CTL_MRET())  => {
       let prev_priv   = cur_privilege();
@@ -335,30 +335,26 @@ function nmi_handler() -> xlenbits = {
 function handle_mem_exception(Virtaddr(addr) : virtaddr, e : ExceptionType) -> unit = {
   let addr = convertInvalidAddr(addr);
   let t : sync_exception = struct { trap    = e,
-                                    excinfo = Some(addr),
-                                    ext     = None() } in
+                                    excinfo = Some(addr) } in
   set_next_pc(exception_handler(cur_privilege(), CTL_TRAP(t), PC))
 }
 
-// Handle a fault during address translation. For the base model this is identical
-// to handle_mem_exception() but for CHERI it also sets mtval2 based on ext_ptw.
-function handle_translate_exception(Virtaddr(addr) : virtaddr, e : ExceptionType, ext_ptw : ext_ptw) -> unit = {
+// Handle a fault during address translation.
+function handle_translate_exception(Virtaddr(addr) : virtaddr, e : ExceptionType) -> unit = {
   let addr = convertInvalidAddr(addr);
   let t : sync_exception = struct { trap    = e,
-                                    excinfo = Some(addr),
-                                    ext     = Some(ext_ptw_exception_info(ext_ptw)) } in
+                                    excinfo = Some(addr) } in
   set_next_pc(exception_handler(cur_privilege(), CTL_TRAP(t), PC))
 }
 
 function handle_exception(e: ExceptionType) -> unit = {
   let t : sync_exception = struct { trap    = e,
-                                    excinfo = None(),
-                                    ext     = None() } in
+                                    excinfo = None() } in
   set_next_pc(exception_handler(cur_privilege(), CTL_TRAP(t), PC))
 }
 
 function handle_interrupt(i : InterruptType, del_priv : Privilege) -> unit =
-  set_next_pc(trap_handler(del_priv, true, interruptType_to_bits(i), PC, None(), None()))
+  set_next_pc(trap_handler(del_priv, true, interruptType_to_bits(i), PC, None()))
 
 function handle_nmi() -> unit = {
   set_next_pc(nmi_handler());
