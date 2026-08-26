@@ -17,7 +17,6 @@ function execute_test(ast : instruction) -> ExecutionResult = {
   match execute(ast) {
     Retire_Success() => RETIRE_SUCCESS,
     Enter_Wait(_) => RETIRE_SUCCESS,
-    Ext_XRET_Priv_Failure() => { ext_fail_xret_priv(); RETIRE_FAIL },
     Trap(priv, ctl, pc) => { set_next_pc(exception_handler(priv, ctl, pc)); RETIRE_FAIL },
     Memory_Exception(vaddr, e) => { handle_mem_exception(vaddr, e); RETIRE_FAIL },
     Illegal_Instruction() => { handle_illegal(zeros()); RETIRE_FAIL },
@@ -36,6 +35,34 @@ function test_cheri_fault() -> unit = {
     assert(execute_test(StoreCapImm(zreg, zreg, zeros())) == RETIRE_FAIL); // Throw tag exception
     assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(CapCheckType_St()))));
     // TODO test PTE exceptions
+}
+
+function assert_illegal_cause() -> unit = {
+    assert(mcause[Cause] == zero_extend(exceptionType_to_bits(E_Illegal_Instr())))
+}
+
+function try_system_insts(pccCap : Capability, allowed : bool) -> unit = {
+    let expected = if allowed then RETIRE_SUCCESS else RETIRE_FAIL;
+    PCC = pccCap;
+    set_cur_privilege(Machine);
+    assert(execute_test(MRET()) == expected);
+    if not(allowed) then assert_illegal_cause();
+    PCC = pccCap;
+    set_cur_privilege(Machine);
+    assert(execute_test(SRET()) == expected);
+    if not(allowed) then assert_illegal_cause();
+    if currentlyEnabled(Ext_Zicbom) then {
+        PCC = pccCap;
+        set_cur_privilege(Machine);
+        assert(execute_test(ZICBOM(CBO_INVAL, Regidx(0b00000))) == expected);
+        if not(allowed) then assert_illegal_cause();
+    }
+}
+
+function test_cheri_system_faults() -> unit = {
+    ddc = infinite_cap;
+    try_system_insts(infinite_cap, true);
+    try_system_insts(setArchPerms(infinite_cap, {getArchPermsLegalized(infinite_cap) with ASR=false}), false);
 }
 
 //function test_cheri_sdtrig() -> unit = {
@@ -599,10 +626,10 @@ function test_cheri_reserved_branches() -> unit = {
     // Check that cap mode bans the "bad" instructions
     let ast = ext_decode(instBitsBEQBad);
     assert(execute_test(ast) == RETIRE_FAIL);
-    assert(mcause[Cause] == zero_extend(exceptionType_to_bits(E_Illegal_Instr())));
+    assert_illegal_cause();
     let ast = ext_decode(instBitsBNEBad);
     assert(execute_test(ast) == RETIRE_FAIL);
-    assert(mcause[Cause] == zero_extend(exceptionType_to_bits(E_Illegal_Instr())));
+    assert_illegal_cause();
 }
 
 function test_cheri_scre(cheri_allowed : bool) -> unit = {
@@ -716,6 +743,7 @@ function test_main_ext() -> unit = {
     test_cheri_cap_encoding();
     test_cheri_cram();
     test_cheri_fault();
+    test_cheri_system_faults();
     test_cheri_nofastrep();
     test_cheri_zba();
     test_cheri_l8();

@@ -204,7 +204,6 @@ function try_step(step_no : nat, exit_wait : bool) -> bool = {
     // errors from extensions
     Step_Execute(Ext_CSR_Check_Failure(fail_type), _) => ext_check_CSR_fail(fail_type),
     Step_Execute(Ext_DataAddr_Check_Failure(e), _) => ext_handle_data_check_error(e),
-    Step_Execute(Ext_XRET_Priv_Failure(), _) => ext_fail_xret_priv(),
   };
 
   match hart_state {

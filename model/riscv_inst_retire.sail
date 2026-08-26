@@ -26,7 +26,6 @@ union ExecutionResult = {
   // Did not retire for custom reason.
   Ext_CSR_Check_Failure          : ext_csr_exc_type,
   Ext_DataAddr_Check_Failure     : ext_data_addr_error,
-  Ext_XRET_Priv_Failure          : unit,
 }
 
 // To ease the introduction of `ExecutionResult`, this global
