@@ -79,7 +79,9 @@ function process_clean_inval(rs1, cbop, cbop_orig) = {
     CBO_INVAL => Cache(Inval)
   };
 
-  match ext_data_get_addr(rs1, negative_offset, acc_type, cache_block_size) {
+  if cbop_orig == CBO_INVAL & not(ext_check_system_priv()) then {
+    Illegal_Instruction()
+  } else match ext_data_get_addr(rs1, negative_offset, acc_type, cache_block_size) {
     Ext_DataAddr_Error(e) => Ext_DataAddr_Check_Failure(e),
     Ext_DataAddr_OK(vaddr) => {
       let res : option(ExceptionType) = match translateAddr(vaddr, Read(Data)) {

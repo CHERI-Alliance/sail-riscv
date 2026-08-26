@@ -10,10 +10,8 @@
 
 type ext_exception = unit
 
-/* Is XRET from given mode permitted by extension? */
-function ext_check_xret_priv (p : Privilege) : Privilege -> bool = true
-/* Called if above check fails */
-function ext_fail_xret_priv () : unit -> unit = ()
+/* Are 'dangerous' operations (XRET, cbo.inval) permitted by extension? */
+function ext_check_xret_priv : ()  -> bool = true
 
 function ext_ptw_exception_info(ext_ptw : ext_ptw) -> ext_exception = ()
 
