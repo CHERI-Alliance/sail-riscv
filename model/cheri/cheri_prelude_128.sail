@@ -64,7 +64,7 @@ bitfield EncMetadata_64 : bits(64) = {
 // 64-bit permission encoding/decoding, converting between the bitvector representation and the
 // encoded bits compressed into the capability.
 // This is the identity mapping (subject to reordering) but detects reserved combinations.
-// Forwards match failures mean bit permissions have been directly changed e.g. with SCHI. These should be
+// Forwards match failures mean bit permissions have been directly changed e.g. with YWHI. These should be
 // checked for outside the function, and the null fields returned.
 // Backwards match failures occur when encoding an unrepresentable combination of fields: this should be
 // prevented by calling legalizeFields when changing the fields.
@@ -80,7 +80,7 @@ mapping ap_m_encdec_64 : bits(cap_AP_M_width_64) <-> (ArchPerms, ExecutionMode) 
 let null_ap_m_64     = 0b000000000
 let infinite_ap_m_64 = 0b111111111
 
-// Perform the XLEN-specific ACPERMS legalization.
+// Perform the XLEN-specific YWPERM legalization.
 function legalizePermsAndMode_64(perms : ArchPerms, mode : ExecutionMode) -> (ArchPerms, ExecutionMode) = {
   let perms = if perms.R | perms.W then perms else {perms with C=false};
   let perms = if perms.C & perms.R then perms else {perms with EL=false};
