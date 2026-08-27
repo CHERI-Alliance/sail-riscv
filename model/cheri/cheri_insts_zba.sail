@@ -7,27 +7,34 @@
 /*=======================================================================================*/
 
 /* ****************************************************************** */
-union clause instruction = ZBA_RTYPEUW_capmode : (regidx, regidx, regidx, shamt_zba)
+union clause instruction = ZBA_RTYPEYUW : (regidx, regidx, regidx, shamt_zba)
 
-// add.uw
-mapping clause encdec_capmode = ZBA_RTYPEUW_capmode(cs2, rs1, cd, 0b00)
+// addy.uw
+mapping clause encdec_capmode = ZBA_RTYPEYUW(cs2, rs1, cd, 0b00)
   <-> 0b0000100 @ encdec_reg(cs2) @ encdec_reg(rs1) @ 0b00 @ 0b0 @ encdec_reg(cd) @ 0b0111011
   when currentlyEnabled(Ext_Zba) & xlen == 64
 
-// sh#add.uw
-mapping clause encdec_capmode = ZBA_RTYPEUW_capmode(cs2, rs1, cd, shamt)
+// sh#addy.uw
+mapping clause encdec_capmode = ZBA_RTYPEYUW(cs2, rs1, cd, shamt)
   <-> 0b0010000 @ encdec_reg(cs2) @ encdec_reg(rs1) @ shamt @ 0b0 @ encdec_reg(cd) @ 0b0111011
   when currentlyEnabled(Ext_Zba) & xlen == 64 & shamt != 0b00
 
-mapping clause assembly = ZBA_RTYPEUW_capmode(cs2, rs1, cd, shamt)
-  <-> zba_rtypeuw_mnemonic(shamt) ^ spc() ^ cap_reg_name(cd) ^ sep() ^ reg_name(rs1) ^ sep() ^ cap_reg_name(cs2)
+mapping zba_rtypeyuw_mnemonic : shamt_zba <-> string = {
+  0b00 <-> "addy.uw",
+  0b01 <-> "sh1addy.uw",
+  0b10 <-> "sh2addy.uw",
+  0b11 <-> "sh3addy.uw",
+}
+
+mapping clause assembly = ZBA_RTYPEYUW(cs2, rs1, cd, shamt)
+  <-> zba_rtypeyuw_mnemonic(shamt) ^ spc() ^ cap_reg_name(cd) ^ sep() ^ reg_name(rs1) ^ sep() ^ cap_reg_name(cs2)
 
 /*!
- * insnref: sh123adduw_32bit capmode
- * Shift by _n_ and add unsigned word for address generation (SH1ADD.UW,
- * SH2ADD.UW, SH3ADD.UW)
+ * insnref: sh123addyuw_32bit capmode
+ * Shift by _n_ and add unsigned word for address generation (SH1ADDY.UW,
+ * SH2ADDY.UW, SH3ADDY.UW)
  *
- * sh[1|2|3]add.uw cd, rs1, cs2
+ * sh[1|2|3]addy.uw cd, rs1, cs2
  *
  * Increment the address field of cs2 by the unsigned word in rs1 shifted
  * left by _n_ bit positions and write the result to cd. The tag bit of
@@ -36,16 +43,16 @@ mapping clause assembly = ZBA_RTYPEUW_capmode(cs2, rs1, cd, shamt)
  * sealed.
  */
 /*
- * insnref: adduw_32bit capmode
+ * insnref: addyuw_32bit capmode
  * Add unsigned word for address generation
  *
- * add.uw cd, rs1, cs2
+ * addy.uw cd, rs1, cs2
  *
  * Increment the address field of cs2 by the unsigned word in rs1. Clear
  * the tag if the resulting capability is unrepresentable or cs2 is
  * sealed.
  */
-function clause execute (ZBA_RTYPEUW_capmode(cs2, rs1, cd, shamt)) = {
+function clause execute (ZBA_RTYPEYUW(cs2, rs1, cd, shamt)) = {
   let rs1_val = X(rs1);
   let cs2_val = Y(cs2);
   let result = incCapAddrChecked(cs2_val, zero_extend(rs1_val[31..0]) << shamt);
@@ -55,17 +62,17 @@ function clause execute (ZBA_RTYPEUW_capmode(cs2, rs1, cd, shamt)) = {
 
 /* ****************************************************************** */
 union clause instruction = ZBA_SH4ADDUW : (regidx, regidx, regidx)
-union clause instruction = ZBA_SH4ADDUW_capmode : (regidx, regidx, regidx)
+union clause instruction = ZBA_SH4ADDYUW : (regidx, regidx, regidx)
 
 mapping clause encdec = ZBA_SH4ADDUW(cs2, rs1, cd)                                       if currentlyEnabled(Ext_Zba) & xlen == 64
   <-> 0b0010000 @ encdec_reg(cs2) @ encdec_reg(rs1) @ 0b111 @ encdec_reg(cd) @ 0b0111011 if currentlyEnabled(Ext_Zba) & xlen == 64
-mapping clause encdec_capmode = ZBA_SH4ADDUW_capmode(cs2, rs1, cd)                       if currentlyEnabled(Ext_Zba) & xlen == 64
+mapping clause encdec_capmode = ZBA_SH4ADDYUW(cs2, rs1, cd)                              if currentlyEnabled(Ext_Zba) & xlen == 64
   <-> 0b0010000 @ encdec_reg(cs2) @ encdec_reg(rs1) @ 0b111 @ encdec_reg(cd) @ 0b0111011 if currentlyEnabled(Ext_Zba) & xlen == 64
 
 mapping clause assembly = ZBA_SH4ADDUW(rs2, rs1, rd)
   <-> "sh4add.uw" ^ spc() ^     reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
-mapping clause assembly = ZBA_SH4ADDUW_capmode(cs2, rs1, cd)
-  <-> "sh4add.uw" ^ spc() ^ cap_reg_name(cd) ^ sep() ^ reg_name(rs1) ^ sep() ^ cap_reg_name(cs2)
+mapping clause assembly = ZBA_SH4ADDYUW(cs2, rs1, cd)
+  <-> "sh4addy.uw" ^ spc() ^ cap_reg_name(cd) ^ sep() ^ reg_name(rs1) ^ sep() ^ cap_reg_name(cs2)
 
 /*!
  * insnref: sh4adduw_32bit intmode
@@ -86,10 +93,10 @@ function clause execute (ZBA_SH4ADDUW(rs2, rs1, rd)) = {
 }
 
 /*!
- * insnref: sh4adduw_32bit capmode
- * Shift by 4 and add unsigned words for address generation (SH4ADD.UW)
+ * insnref: sh4addyuw_32bit capmode
+ * Shift by 4 and add unsigned words for address generation (SH4ADDY.UW)
  *
- * sh4add.uw cd, rs1, cs2
+ * sh4addy.uw cd, rs1, cs2
  *
  * Increment the address field of cs2 by the unsigned word in rs1 shifted
  * left by 4 bit positions and write the result to cd. The tag bit of the
@@ -97,7 +104,7 @@ function clause execute (ZBA_SH4ADDUW(rs2, rs1, rd)) = {
  * incremented address is outside cs2's Representable Range or cs2 is
  * sealed.
  */
-function clause execute (ZBA_SH4ADDUW_capmode(cs2, rs1, cd)) = {
+function clause execute (ZBA_SH4ADDYUW(cs2, rs1, cd)) = {
   let rs1_val = X(rs1);
   let cs2_val = Y(cs2);
   let shamt = 4;
@@ -107,27 +114,27 @@ function clause execute (ZBA_SH4ADDUW_capmode(cs2, rs1, cd)) = {
 }
 
 /* ****************************************************************** */
-union clause instruction = ZBA_RTYPE_capmode : (regidx, regidx, regidx, shamt_zba)
+union clause instruction = ZBA_RTYPE_Y : (regidx, regidx, regidx, shamt_zba)
 
-mapping clause encdec_capmode = ZBA_RTYPE_capmode(cs2, rs1, cd, shamt)
+mapping clause encdec_capmode = ZBA_RTYPE_Y(cs2, rs1, cd, shamt)
   <-> 0b0010000 @ encdec_reg(cs2) @ encdec_reg(rs1) @ shamt @ 0b0 @ encdec_reg(cd) @ 0b0110011
   when shamt != 0b00 & currentlyEnabled(Ext_Zba)
 
-mapping clause assembly = ZBA_RTYPE_capmode(cs2, rs1, cd, shamt)
+mapping clause assembly = ZBA_RTYPE_Y(cs2, rs1, cd, shamt)
   <-> zba_rtype_mnemonic(shamt) ^ spc() ^ cap_reg_name(cd) ^ sep() ^ reg_name(rs1) ^ sep() ^ cap_reg_name(cs2)
 
 /*!
- * insnref: sh123add_32bit capmode
+ * insnref: sh123addy_32bit capmode
  * Shift by _n_ and add for address generation (SH1ADD, SH2ADD, SH3ADD)
  *
- * sh[1|2|3]add cd, rs1, cs2
+ * sh[1|2|3]addy cd, rs1, cs2
  *
  * Increment the address field of cs2 by rs1 shifted left by _n_ bit
  * positions and write the result to cd. The tag bit of the output
  * capability is 0 if cs2 did not have its tag set to 1, the incremented
  * address is outside cs2 's Representable Range or cs2 is sealed.
  */
-function clause execute (ZBA_RTYPE_capmode(cs2, rs1, cd, shamt)) = {
+function clause execute (ZBA_RTYPE_Y(cs2, rs1, cd, shamt)) = {
   let rs1_val = X(rs1);
   let cs2_val = Y(cs2);
   let result = incCapAddrChecked(cs2_val, rs1_val << shamt);
@@ -137,17 +144,17 @@ function clause execute (ZBA_RTYPE_capmode(cs2, rs1, cd, shamt)) = {
 
 /* ****************************************************************** */
 union clause instruction = ZBA_SH4ADD : (regidx, regidx, regidx)
-union clause instruction = ZBA_SH4ADD_capmode : (regidx, regidx, regidx)
+union clause instruction = ZBA_SH4ADDY : (regidx, regidx, regidx)
 
 mapping clause encdec = ZBA_SH4ADD(rs2, rs1, rd)                                         if currentlyEnabled(Ext_Zba) & xlen == 64
   <-> 0b0010000 @ encdec_reg(rs2) @ encdec_reg(rs1) @ 0b111 @ encdec_reg(rd) @ 0b0110011 if currentlyEnabled(Ext_Zba) & xlen == 64
-mapping clause encdec_capmode = ZBA_SH4ADD_capmode(cs2, rs1, cd)                         if currentlyEnabled(Ext_Zba) & xlen == 64
+mapping clause encdec_capmode = ZBA_SH4ADDY(cs2, rs1, cd)                                if currentlyEnabled(Ext_Zba) & xlen == 64
   <-> 0b0010000 @ encdec_reg(cs2) @ encdec_reg(rs1) @ 0b111 @ encdec_reg(cd) @ 0b0110011 if currentlyEnabled(Ext_Zba) & xlen == 64
 
 mapping clause assembly = ZBA_SH4ADD(rs2, rs1, rd)
   <-> "sh4add" ^ spc() ^ reg_name(rd)     ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
-mapping clause assembly = ZBA_SH4ADD_capmode(cs2, rs1, cd)
-  <-> "sh4add" ^ spc() ^ cap_reg_name(cd) ^ sep() ^ reg_name(rs1) ^ sep() ^ cap_reg_name(cs2)
+mapping clause assembly = ZBA_SH4ADDY(cs2, rs1, cd)
+  <-> "sh4addy" ^ spc() ^ cap_reg_name(cd) ^ sep() ^ reg_name(rs1) ^ sep() ^ cap_reg_name(cs2)
 
 /*!
  * insnref: sh4add_32bit intmode
@@ -168,17 +175,17 @@ function clause execute (ZBA_SH4ADD(rs2, rs1, rd)) = {
 }
 
 /*!
- * insnref: sh4add_32bit capmode
- * Shift by 4 and add for address generation (SH4ADD)
+ * insnref: sh4addy_32bit capmode
+ * Shift by 4 and add for address generation (SH4ADDY)
  *
- * sh4add cd, rs1, cs2
+ * sh4addy cd, rs1, cs2
  *
  * Increment the address field of cs2 by rs1 shifted left by 4 bit
  * positions and write the result to cd. The tag bit of the output
  * capability is 0 if cs2 did not have its tag set to 1, the incremented
  * address is outside cs2 's Representable Range or cs2 is sealed.
  */
-function clause execute (ZBA_SH4ADD_capmode(cs2, rs1, cd)) = {
+function clause execute (ZBA_SH4ADDY(cs2, rs1, cd)) = {
   let rs1_val = X(rs1);
   let cs2_val = Y(cs2);
   let shamt = 4;
