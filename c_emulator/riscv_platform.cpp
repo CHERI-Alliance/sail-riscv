@@ -18,6 +18,11 @@
 static mach_bits reservation = 0;
 static bool reservation_valid = false;
 
+bool sys_enable_rvy(unit)
+{
+  return rv_enable_rvy;
+}
+
 // Provides entropy for the scalar cryptography extension.
 mach_bits plat_get_16_random_bits(unit)
 {

@@ -103,6 +103,8 @@ let sys_enable_writable_fiom : bool = config base.writable_fiom
 
 /* whether misa.X should be set to indicate non-standard extensions */
 val sys_misa_x = pure "sys_misa_x" : unit -> bool
+/* whether RVY cheri extension was enabled at boot */
+val sys_enable_rvy = pure "sys_enable_rvy" : unit -> bool
 
 // Force the set bits of mcountinhibit to 1
 val sys_force_countinhibit_bits = pure "sys_force_countinhibit_bits" : unit -> bits(32)
@@ -162,6 +164,7 @@ function legalize_misa(m : Misa, v : xlenbits) -> Misa = {
     U = if hartSupports(Ext_U) then v[U] else 0b0,
     V = if hartSupports(Ext_V) & v[F] == 0b1 & v[D] == 0b1 then v[V] else 0b0,
     // X = ... TODO: If custom extensions are present this should be 1
+    Y = if sys_enable_rvy() then v[Y] else 0b0,
   ]
 }
 
@@ -326,12 +329,7 @@ bitfield Seccfg : bits(64) = {
   // Enable access to SEED in U-mode
   USEED  : 8,
   // Reserved WPRI bits
-  wpri_1 : 7 .. 4,
-  // CHERI Register Enable
-  // Whether CHERI registers are enabled for M mode.
-  CRE : 3,
-  // Reserved WPRI bits
-  wpri_0 : 2 .. 0,
+  wpri_0 : 7 .. 0,
 }
 
 function legalize_mseccfg(o : Seccfg, v : bits(64)) -> Seccfg = {
@@ -348,7 +346,6 @@ function legalize_mseccfg(o : Seccfg, v : bits(64)) -> Seccfg = {
   [o with
     SSEED = if sseed_read_only_zero then 0b0 else v[SSEED],
     USEED = if useed_read_only_zero then 0b0 else v[USEED],
-    CRE = v[CRE],
   ]
 }
 
@@ -377,12 +374,12 @@ function clause write_CSR((0x757, value) if xlen == 32) = {
   Ok(mseccfg.bits[63 .. 32])
 }
 
-val legalize_menvcfg : (MEnvcfg, Seccfg, bits(64)) -> MEnvcfg
-val legalize_senvcfg : (SEnvcfg, MEnvcfg, xlenbits) -> SEnvcfg
+val legalize_menvcfg : (MEnvcfg, bits(64)) -> MEnvcfg
+val legalize_senvcfg : (SEnvcfg, xlenbits) -> SEnvcfg
 
 // Initialised to legal values in case some bits are hard-coded to 1.
-register menvcfg : MEnvcfg = legalize_menvcfg(Mk_MEnvcfg(zeros()), mseccfg, zeros())
-register senvcfg : SEnvcfg = legalize_senvcfg(Mk_SEnvcfg(zeros()), menvcfg, zeros())
+register menvcfg : MEnvcfg = legalize_menvcfg(Mk_MEnvcfg(zeros()), zeros())
+register senvcfg : SEnvcfg = legalize_senvcfg(Mk_SEnvcfg(zeros()), zeros())
 
 mapping clause csr_name_map = 0x30A  <-> "menvcfg"
 mapping clause csr_name_map = 0x31A  <-> "menvcfgh"

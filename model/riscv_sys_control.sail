@@ -372,6 +372,7 @@ function reset_misa() -> unit = {
   misa[S]   = bool_to_bits(hartSupports(Ext_S));   /* supervisor-mode */
   misa[V]   = bool_to_bits(hartSupports(Ext_V));   /* vector extension */
   misa[X]   = bool_to_bits(sys_misa_x());          /* non-standard extension */
+  misa[Y]   = bool_to_bits(sys_enable_rvy());      /* CHERI extension */
 
   if   hartSupports(Ext_F) & hartSupports(Ext_Zfinx)
   then internal_error(__FILE__, __LINE__, "F and Zfinx cannot both be enabled!");
