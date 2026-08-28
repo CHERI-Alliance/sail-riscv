@@ -52,12 +52,6 @@ function set_senvcfg(v : xlenbits) -> unit = {
   senvcfg = legalize_senvcfg(senvcfg, menvcfg, v);
 }
 
-/******************************* mseccfg *******************************/
-
-function set_mseccfg(v : bits(64)) -> unit = {
-  mseccfg = legalize_mseccfg(mseccfg, v);
-}
-
 /******************************* xTVT[C] *******************************/
 
 function get_mtvt() -> xlenbits = mtvt

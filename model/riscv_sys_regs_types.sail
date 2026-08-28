@@ -29,12 +29,3 @@ bitfield SEnvcfg : xlenbits = {
   // Fence of I/O implies Memory
   FIOM   : 0,
 }
-
-bitfield Seccfg : bits(64) = {
-  // Enable access to SEED in S-mode
-  SSEED  : 9,
-  // Enable access to SEED in U-mode
-  USEED  : 8,
-  // Reserved WPRI bits
-  wpri_0 : 7 .. 0,
-}
