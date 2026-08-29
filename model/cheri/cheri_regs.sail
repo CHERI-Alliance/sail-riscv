@@ -35,17 +35,6 @@ function ext_rvfi_reset () = {
   foreach (i from 1 to 31) wX_full(Regno(i), infinite_cap);
 }
 
-/* mappings for assembly */
-
-mapping cap_reg_name : regidx <-> string = {
-    Regidx(0b00000) <-> "cnull",
-    r               <-> "c" ^ reg_name(r)
-}
-
-mapping cap_creg_name : cregidx <-> string = {
-  r <-> "c" ^ creg_name(r)
-}
-
 // Implementations are allowed to choose whether to clear the tag
 // when invalid address legalisation does not modify the address
 let sys_cheri_accurate_tag_clearing = false
