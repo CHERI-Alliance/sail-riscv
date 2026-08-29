@@ -7,27 +7,27 @@
 /*=======================================================================================*/
 
 function ext_reset_cheri() -> unit = {
-  PCC = infinite_cap;
-  nextPCC = infinite_cap;
-  ddc = infinite_cap;
+  PCC = root_cap;
+  nextPCC = root_cap;
+  ddc = root_cap;
 
   // The address bits may have been initialised by the non-CHERI reset to a non-zero value.
-  stvec_y = {infinite_cap with address = stvec.bits};
+  stvec_y = {root_cap with address = stvec.bits};
   sscratch_y = {sscratch_y with tag = false, address = sscratch} ;
-  sepc_y = infinite_cap;
+  sepc_y = root_cap;
   mtid_y = {mtid_y with tag = false};
   stid_y = {stid_y with tag = false};
   utid_y = {utid_y with tag = false};
 
-  mtvec_y = {infinite_cap with address = mtvec.bits};
+  mtvec_y = {root_cap with address = mtvec.bits};
   mscratch_y = {mscratch_y with tag = false, address = mscratch} ;
-  mepc_y = infinite_cap;
+  mepc_y = root_cap;
 
   // dpcc = {dpcc with tag = false} ;
   // dscratch0c = {dscratch0c with tag = false};
   // dscratch1c = {dscratch1c with tag = false};
   // dddc = {dddc with tag = false};
-  // dinfc = infinite_cap;
+  // drootc = root_cap;
 
   // Canonicalize so that all partially decoded fields are consistent again.
   foreach (i from 1 to 31) {

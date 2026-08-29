@@ -93,9 +93,9 @@ mapping ap_m_encdec_32 : bits(cap_AP_M_width_32) <-> (ArchPerms, ExecutionMode) 
   0b11 @ 0b111     <-> (struct{ R= true, W= true, C= true, LM= true, EL= true, SL=false, X=false, ASR=false }, execution_mode_encdec(0b0)),
 }
 
-// Ideally ap_m_encdec(({null,infinite}_perms, IntPtrMode)), but spurious incomplete match side-effect at toplevel
-let null_ap_m_32     = 0b00000
-let infinite_ap_m_32 = 0b01001
+// Ideally ap_m_encdec(({null,root}_perms, IntPtrMode)), but spurious incomplete match side-effect at toplevel
+let null_ap_m_32 = 0b00000
+let root_ap_m_32 = 0b01001
 
 // Perform the XLEN-specific YPERMC legalization.
 function legalizePermsAndMode_32(perms : ArchPerms, mode : ExecutionMode) -> (ArchPerms, ExecutionMode) = {

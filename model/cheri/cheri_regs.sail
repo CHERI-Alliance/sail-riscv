@@ -32,7 +32,7 @@ overload Y = {rY_bits, wY_bits, rY, wY}
  */
 val ext_rvfi_reset : unit -> unit
 function ext_rvfi_reset () = {
-  foreach (i from 1 to 31) wX_full(Regno(i), infinite_cap);
+  foreach (i from 1 to 31) wX_full(Regno(i), root_cap);
 }
 
 // Implementations are allowed to choose whether to clear the tag
