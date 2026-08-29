@@ -152,7 +152,7 @@ function ap_m_valid_bits(ap_m) = {
 }
 
 let null_ap_m : bits(cap_AP_M_width) = if xlen == 32 then 0b00000 else 0b000000000
-let infinite_ap_m : bits(cap_AP_M_width) = if xlen == 32 then 0b01001 else 0b111111111
+let root_ap_m : bits(cap_AP_M_width) = if xlen == 32 then 0b01001 else 0b111111111
 
 // Perform the XLEN-specific ACPERMS legalization.
 function legalizePermsAndMode(perms : ArchPerms, mode : ExecutionMode) -> (ArchPerms, ExecutionMode) = {
