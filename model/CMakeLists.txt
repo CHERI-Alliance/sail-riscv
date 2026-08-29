@@ -113,6 +113,7 @@ foreach (variant IN ITEMS "" "smt" "rocq" "rmem" "lean" "lem" "isabelle")
         "riscv_insts_begin.sail"
         ${sail_seq_inst}
         "riscv_insts_end.sail"
+        "cheri/cheri_csr_ext.sail"
         "riscv_csr_end.sail"
     )
 
