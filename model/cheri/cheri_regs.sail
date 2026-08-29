@@ -9,81 +9,11 @@
 /* accessors for capability representation */
 
 /* reads a given capability register, or the null capability if the argument is zero. */
-function rC(Regno(r) : regno) -> regtype = {
-  match r {
-    0  => zero_reg,
-    1  => x1,
-    2  => x2,
-    3  => x3,
-    4  => x4,
-    5  => x5,
-    6  => x6,
-    7  => x7,
-    8  => x8,
-    9  => x9,
-    10 => x10,
-    11 => x11,
-    12 => x12,
-    13 => x13,
-    14 => x14,
-    15 => x15,
-    16 => x16,
-    17 => x17,
-    18 => x18,
-    19 => x19,
-    20 => x20,
-    21 => x21,
-    22 => x22,
-    23 => x23,
-    24 => x24,
-    25 => x25,
-    26 => x26,
-    27 => x27,
-    28 => x28,
-    29 => x29,
-    30 => x30,
-    31 => x31,
-    _  => internal_error(__FILE__, __LINE__, "Invalid capability register")
-  }
-}
+function rC(r : regno) -> regtype = rX_full(r)
 
 /* writes a register with a capability value */
 function wC (Regno(r) : regno, v : regtype) -> unit = {
-  match r {
-    0  => (),
-    1  => x1 = v,
-    2  => x2 = v,
-    3  => x3 = v,
-    4  => x4 = v,
-    5  => x5 = v,
-    6  => x6 = v,
-    7  => x7 = v,
-    8  => x8 = v,
-    9  => x9 = v,
-    10 => x10 = v,
-    11 => x11 = v,
-    12 => x12 = v,
-    13 => x13 = v,
-    14 => x14 = v,
-    15 => x15 = v,
-    16 => x16 = v,
-    17 => x17 = v,
-    18 => x18 = v,
-    19 => x19 = v,
-    20 => x20 = v,
-    21 => x21 = v,
-    22 => x22 = v,
-    23 => x23 = v,
-    24 => x24 = v,
-    25 => x25 = v,
-    26 => x26 = v,
-    27 => x27 = v,
-    28 => x28 = v,
-    29 => x29 = v,
-    30 => x30 = v,
-    31 => x31 = v,
-    _  => internal_error(__FILE__, __LINE__, "Invalid capability register")
-  };
+  wX_full(Regno(r), v);
   if r != 0 then xreg_write_callback(Regidx(to_bits(r)), v.address)
 }
 
@@ -102,37 +32,7 @@ overload C = {rC_bits, wC_bits, rC, wC}
  */
 val ext_rvfi_reset : unit -> unit
 function ext_rvfi_reset () = {
-  x1  = infinite_cap;
-  x2  = infinite_cap;
-  x3  = infinite_cap;
-  x4  = infinite_cap;
-  x5  = infinite_cap;
-  x6  = infinite_cap;
-  x7  = infinite_cap;
-  x8  = infinite_cap;
-  x9  = infinite_cap;
-  x10 = infinite_cap;
-  x11 = infinite_cap;
-  x12 = infinite_cap;
-  x13 = infinite_cap;
-  x14 = infinite_cap;
-  x15 = infinite_cap;
-  x16 = infinite_cap;
-  x17 = infinite_cap;
-  x18 = infinite_cap;
-  x19 = infinite_cap;
-  x20 = infinite_cap;
-  x21 = infinite_cap;
-  x22 = infinite_cap;
-  x23 = infinite_cap;
-  x24 = infinite_cap;
-  x25 = infinite_cap;
-  x26 = infinite_cap;
-  x27 = infinite_cap;
-  x28 = infinite_cap;
-  x29 = infinite_cap;
-  x30 = infinite_cap;
-  x31 = infinite_cap;
+  foreach (i from 1 to 31) wX_full(Regno(i), infinite_cap);
 }
 
 /* mappings for assembly */
