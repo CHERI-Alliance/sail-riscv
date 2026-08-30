@@ -1,9 +1,9 @@
 bitfield Mstatus : bits(64) = {
   SD   : xlen - 1,
 
-  // UCRG only exists for RV64-CHERI
-  // It is set explicitly only in the methods below
-  UCRG : xlen - 3,
+  UYRG : xlen - 3,
+  SYRG : xlen - 4,
+  YRGE : xlen - 5,
 
   //MDT  : 42,
   //MPELP: 41,
@@ -42,7 +42,10 @@ bitfield Mstatus : bits(64) = {
 
 bitfield Sstatus : bits(64) = {
   SD   : xlen - 1,
-  UCRG : xlen - 3,
+
+  UYRG : xlen - 3,
+  SYRG : xlen - 4,
+  YRGE : xlen - 5,
 
   UXL   : 33 .. 32,
 //  SDT   : 24,
@@ -58,13 +61,13 @@ bitfield Sstatus : bits(64) = {
 }
 
 function ext_legalize_mstatus(m : Mstatus, v : Mstatus) -> Mstatus = {
-  if xlen == 64 then [m with UCRG = v[UCRG]] else m;
+  if xlen == 64 then [m with UYRG = v[UYRG], SYRG = v[SYRG], YRGE = v[YRGE]] else m;
 }
 
 function ext_lower_mstatus(m : Mstatus, s : Sstatus) -> Sstatus = {
-  if xlen == 64 then [s with UCRG = m[UCRG]] else s;
+  if xlen == 64 then [s with UYRG = m[UYRG], SYRG = m[SYRG], YRGE = m[YRGE]] else s;
 }
 
 function ext_lift_sstatus(m : Mstatus, s : Sstatus) -> Mstatus = {
-  if xlen == 64 then [m with UCRG = s[UCRG]] else m;
+  if xlen == 64 then [m with UYRG = s[UYRG], SYRG = s[SYRG], YRGE = s[YRGE]] else m;
 }
