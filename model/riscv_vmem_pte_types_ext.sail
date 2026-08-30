@@ -11,5 +11,6 @@ bitfield PTE_Ext : pte_ext_bits = {
   N        : 9,
   // Page based memory types.
   PBMT     : 8 .. 7,
-  reserved : 6 .. 0,
+  res_hi   : 6 .. 5,
+  res_lo   : 4 .. 0,
 }

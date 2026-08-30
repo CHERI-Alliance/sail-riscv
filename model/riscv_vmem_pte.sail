@@ -40,7 +40,8 @@ function pte_is_invalid(pte_flags : PTE_Flags, pte_ext : option(PTE_Ext)) -> boo
         // PBMT 0b11 is always reserved. This applies even without PBMT support.
         | pte_ext[PBMT] == 0b11
         // Reserved bits must be 0.
-        | pte_ext[reserved] != zeros(),
+        | pte_ext[res_hi] != zeros()
+        | pte_ext[res_lo] != zeros(),
       None() => false,
     }) : bool)
   | ext_pte_is_invalid(pte_flags, pte_ext)
