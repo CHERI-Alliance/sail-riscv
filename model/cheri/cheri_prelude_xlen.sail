@@ -32,7 +32,7 @@ let cap_use_L8 : bool = if xlen == 32 then cap_use_L8_32 else cap_use_L8_64
 struct EncMetadata = {
   SDP : bits(cap_sd_perms_width),
   AP_M : bits(cap_AP_M_width),
-  CL : bits(1),
+  GL : bits(1),
   CT : bits(1),
   EF : bits(1),
   Tm : bits(if xlen == 32 then 6 else 9),
@@ -51,7 +51,7 @@ function dec_EncMetadata(meta_bits) = {
     struct {
       SDP = m32[SDP],
       AP_M = m32[AP_M],
-      CL = m32[CL],
+      GL = m32[GL],
       CT = m32[CT],
       EF = m32[EF],
       Tm = m32[Tm],
@@ -67,7 +67,7 @@ function dec_EncMetadata(meta_bits) = {
     struct {
       SDP = m64[SDP],
       AP_M = m64[AP_M],
-      CL = m64[CL],
+      GL = m64[GL],
       CT = m64[CT],
       EF = m64[EF],
       Tm = m64[Tm],
@@ -88,7 +88,7 @@ function enc_EncMetadata(meta) = {
       Mk_EncMetadata_32(zeros()) with
       SDP = meta.SDP,
       AP_M = meta.AP_M,
-      CL = meta.CL,
+      GL = meta.GL,
       CT = meta.CT,
       EF = meta.EF,
       Tm = meta.Tm,
@@ -105,7 +105,7 @@ function enc_EncMetadata(meta) = {
       Mk_EncMetadata_64(zeros()) with
       SDP = meta.SDP,
       AP_M = meta.AP_M,
-      CL = meta.CL,
+      GL = meta.GL,
       CT = meta.CT,
       EF = meta.EF,
       Tm = meta.Tm,
