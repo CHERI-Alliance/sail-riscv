@@ -37,10 +37,10 @@ let cap_use_L8_64 : bool = false
 
 // Capability format metadata completely compressed. Tag is out of band.
 bitfield EncMetadata_64 : bits(64) = {
-  // Upper reserved area (64-bit only).
-  reserved_1 : 63 .. 57,
   // Software Defined Permissions.
-  SDP        : 56 .. 53,
+  SDP        : 63 .. 60,
+  // Upper reserved area (64-bit only).
+  reserved_1 : 59 .. 53,
   // Architectural Permissions and Mode (encoded together).
   AP_P       : 52 .. 44,
   // Capability Level
@@ -69,8 +69,8 @@ bitfield EncMetadata_64 : bits(64) = {
 // Backwards match failures occur when encoding an unrepresentable combination of fields: this should be
 // prevented by calling legalizeFields when changing the fields.
 mapping ap_p_encdec_64 : bits(cap_AP_P_width_64) <-> (ArchPerms, PointerMode) = {
-  pointer_mode_encdec(P) @ bool_bits(SL) @ bool_bits(EL) @ bool_bits(LM) @
-  bool_bits(ASR) @ bool_bits(X) @ bool_bits(R) @ bool_bits(W) @ bool_bits(C)
+  bool_bits(SL) @ bool_bits(EL) @ bool_bits(LM) @ bool_bits(ASR) @
+  bool_bits(X) @ bool_bits(R) @ bool_bits(W) @ bool_bits(C) @ pointer_mode_encdec(P)
     if (not(ASR) | X) & (not(C) | (R | W)) & (P == pointer_mode_encdec(0b0) | X) & (not(SL) | C) & (not(EL | LM) | (C & R)) <->
   (struct{R, W, C, X, LM, SL, EL, ASR}, P)
     if (not(ASR) | X) & (not(C) | (R | W)) & (P == pointer_mode_encdec(0b0) | X) & (not(SL) | C) & (not(EL | LM) | (C & R)),

@@ -277,7 +277,7 @@ function test_cheri_permission_encoding() -> unit = {
     if cap_size == 16 then {
         // Malformed permission combination, but it can be encoded (though is reserved) on RV64.
         // P=1 (IntPtrMode), LM=0, SL=0, EL=0 ASR=1, X=0, R=1, W=1, C=0
-        let invalid = {null_cap with ap_p = 0b100010110};
+        let invalid = {null_cap with ap_p = 0b000101101};
         // We shouldn't be able to change the mode to CapPtrMode because X=0
         // so this should have no effect.
         Y(capR) = invalid;
@@ -471,7 +471,7 @@ function test_cheri_malformed() -> unit = {
     // Create capabilities that are malformed in various ways
     let badBoundsCap = { root_cap with B = ones() };
     assert(boundsMalformed(badBoundsCap));
-    let badPermsCap = { root_cap with ap_p = (if xlen == 32 then 0b10001 else 0b000010111) };
+    let badPermsCap = { root_cap with ap_p = (if xlen == 32 then 0b10001 else 0b001011100) };
     assert(permsMalformed(badPermsCap));
     let badReservedCap = { root_cap with reserved_0 = ones() };
     assert(not(capReservedValid(badReservedCap)));
