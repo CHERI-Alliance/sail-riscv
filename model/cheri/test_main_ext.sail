@@ -642,6 +642,38 @@ function test_cheri_reserved_branches() -> unit = {
     assert_illegal_cause();
 }
 
+function test_cheri_reserved_load_store() -> unit = {
+    let dstR : regidx = Regidx(0b00001);
+    let srcR : regidx = Regidx(0b00010);
+    // Encode with rs1 = zreg in IntPtrMode where rs1 = zreg is permitted
+    PCC = {setCapMode(PCC, IntPtrMode)};
+    let instBitsLY = encdec(LoadCapImm(dstR, zreg, zeros()));
+    let instBitsSY = encdec(StoreCapImm(srcR, zreg, zeros()));
+    // Check that CapPtrMode reserves rs1 = zreg for capability loads/stores/AMOs
+    PCC = {setCapMode(PCC, CapPtrMode)};
+    assert(execute_test(ext_decode(instBitsLY)) == RETIRE_FAIL);
+    assert_illegal_cause();
+    assert(execute_test(ext_decode(instBitsSY)) == RETIRE_FAIL);
+    assert_illegal_cause();
+    if currentlyEnabled(Ext_Zalrsc) then {
+        PCC = {setCapMode(PCC, IntPtrMode)};
+        let instBitsLRY = encdec(LoadResCap(dstR, zreg, false, false));
+        let instBitsSCY = encdec(StoreCondCap(dstR, srcR, zreg, false, false));
+        PCC = {setCapMode(PCC, CapPtrMode)};
+        assert(execute_test(ext_decode(instBitsLRY)) == RETIRE_FAIL);
+        assert_illegal_cause();
+        assert(execute_test(ext_decode(instBitsSCY)) == RETIRE_FAIL);
+        assert_illegal_cause();
+    };
+    if currentlyEnabled(Ext_Zaamo) then {
+        PCC = {setCapMode(PCC, IntPtrMode)};
+        let instBitsAMOSWAPY = encdec(AMOSwapCap(dstR, srcR, zreg, false, false));
+        PCC = {setCapMode(PCC, CapPtrMode)};
+        assert(execute_test(ext_decode(instBitsAMOSWAPY)) == RETIRE_FAIL);
+        assert_illegal_cause();
+    };
+}
+
 function test_cheri_scre(cheri_allowed : bool) -> unit = {
     set_senvcfg(update_Y(senvcfg, 0b1).bits);
     test_cheri_pcc_mode(User, cheri_allowed);
@@ -759,6 +791,7 @@ function test_main_ext() -> unit = {
     test_cheri_l8();
     test_cheri_redundant();
     test_cheri_reserved_branches();
+    test_cheri_reserved_load_store();
     test_cheri_rounding();
     test_cheri_permission_encoding();
     test_cheri_circular();
