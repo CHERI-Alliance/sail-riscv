@@ -24,14 +24,14 @@ let  cap_mantissa_width = sizeof(cap_mantissa_width)
 type cap_E_width : Int  = if xlen == 32 then cap_E_width_32 else cap_E_width_64
 let  cap_E_width = sizeof(cap_E_width)
 
-type cap_AP_M_width : Int = if xlen == 32 then cap_AP_M_width_32 else cap_AP_M_width_64
-let  cap_AP_M_width = sizeof(cap_AP_M_width)
+type cap_AP_P_width : Int = if xlen == 32 then cap_AP_P_width_32 else cap_AP_P_width_64
+let  cap_AP_P_width = sizeof(cap_AP_P_width)
 
 let cap_use_L8 : bool = if xlen == 32 then cap_use_L8_32 else cap_use_L8_64
 
 struct EncMetadata = {
   SDP : bits(cap_sd_perms_width),
-  AP_M : bits(cap_AP_M_width),
+  AP_P : bits(cap_AP_P_width),
   GL : bits(1),
   CT : bits(1),
   EF : bits(1),
@@ -50,7 +50,7 @@ function dec_EncMetadata(meta_bits) = {
     let m32 = Mk_EncMetadata_32(slice(meta_bits, 0, 32));
     struct {
       SDP = m32[SDP],
-      AP_M = m32[AP_M],
+      AP_P = m32[AP_P],
       GL = m32[GL],
       CT = m32[CT],
       EF = m32[EF],
@@ -66,7 +66,7 @@ function dec_EncMetadata(meta_bits) = {
     let m64 = Mk_EncMetadata_64(slice(meta_bits, 0, 64));
     struct {
       SDP = m64[SDP],
-      AP_M = m64[AP_M],
+      AP_P = m64[AP_P],
       GL = m64[GL],
       CT = m64[CT],
       EF = m64[EF],
@@ -87,7 +87,7 @@ function enc_EncMetadata(meta) = {
     let m32 = [
       Mk_EncMetadata_32(zeros()) with
       SDP = meta.SDP,
-      AP_M = meta.AP_M,
+      AP_P = meta.AP_P,
       GL = meta.GL,
       CT = meta.CT,
       EF = meta.EF,
@@ -104,7 +104,7 @@ function enc_EncMetadata(meta) = {
     let m64 = [
       Mk_EncMetadata_64(zeros()) with
       SDP = meta.SDP,
-      AP_M = meta.AP_M,
+      AP_P = meta.AP_P,
       GL = meta.GL,
       CT = meta.CT,
       EF = meta.EF,
@@ -120,42 +120,42 @@ function enc_EncMetadata(meta) = {
 }
 
 // Unified permission encoding/decoding functions
-val ap_m_decode : bits(cap_AP_M_width) -> (ArchPerms, ExecutionMode)
-function ap_m_decode(ap_m) = {
+val ap_p_decode : bits(cap_AP_P_width) -> (ArchPerms, PointerMode)
+function ap_p_decode(ap_p) = {
   if xlen == 32 then {
-    let ap_m32 : bits(cap_AP_M_width_32) = ap_m;
-    ap_m_encdec_32(ap_m32)
+    let ap_p32 : bits(cap_AP_P_width_32) = ap_p;
+    ap_p_encdec_32(ap_p32)
   } else {
-    let ap_m64 : bits(cap_AP_M_width_64) = ap_m;
-    ap_m_encdec_64(ap_m64)
+    let ap_p64 : bits(cap_AP_P_width_64) = ap_p;
+    ap_p_encdec_64(ap_p64)
   }
 }
 
-val ap_m_encode : ((ArchPerms, ExecutionMode)) -> bits(cap_AP_M_width)
-function ap_m_encode((perms, mode)) = {
+val ap_p_encode : ((ArchPerms, PointerMode)) -> bits(cap_AP_P_width)
+function ap_p_encode((perms, mode)) = {
   if xlen == 32 then {
-    ap_m_encdec_32(perms, mode)
+    ap_p_encdec_32(perms, mode)
   } else {
-    ap_m_encdec_64(perms, mode)
+    ap_p_encdec_64(perms, mode)
   }
 }
 
-val ap_m_valid_bits : bits(cap_AP_M_width) -> bool
-function ap_m_valid_bits(ap_m) = {
+val ap_p_valid_bits : bits(cap_AP_P_width) -> bool
+function ap_p_valid_bits(ap_p) = {
   if xlen == 32 then {
-    let ap_m5 : bits(5) = ap_m;
-    ap_m_encdec_32_forwards_matches(ap_m5)
+    let ap_p5 : bits(5) = ap_p;
+    ap_p_encdec_32_forwards_matches(ap_p5)
   } else {
-    let ap_m9 : bits(9) = ap_m;
-    ap_m_encdec_64_forwards_matches(ap_m9)
+    let ap_p9 : bits(9) = ap_p;
+    ap_p_encdec_64_forwards_matches(ap_p9)
   }
 }
 
-let null_ap_m : bits(cap_AP_M_width) = if xlen == 32 then 0b00000 else 0b000000000
-let root_ap_m : bits(cap_AP_M_width) = if xlen == 32 then 0b01001 else 0b111111111
+let null_ap_p : bits(cap_AP_P_width) = if xlen == 32 then 0b00000 else 0b000000000
+let root_ap_p : bits(cap_AP_P_width) = if xlen == 32 then 0b01001 else 0b111111111
 
 // Perform the XLEN-specific ACPERMS legalization.
-function legalizePermsAndMode(perms : ArchPerms, mode : ExecutionMode) -> (ArchPerms, ExecutionMode) = {
+function legalizePermsAndMode(perms : ArchPerms, mode : PointerMode) -> (ArchPerms, PointerMode) = {
   if xlen == 32 then {
     legalizePermsAndMode_32(perms, mode)
   } else {
