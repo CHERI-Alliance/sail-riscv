@@ -31,9 +31,11 @@ function ext_reset_cheri() -> unit = {
   // dddc = {dddc with tag = false};
   // dinfc = infinite_cap;
 
+  // Canonicalize so that all partially decoded fields are consistent again.
   foreach (i from 1 to 31) {
     let r = Regno(i);
-    wX_full(r, {rX_full(r) with tag = false});
+    let c = rX_full(r);
+    wX_full(r, bitsToCap(false, capToMetadataBits(c) @ c.address));
   };
 }
 
