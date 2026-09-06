@@ -137,47 +137,44 @@ register x29 : regtype
 register x30 : regtype
 register x31 : regtype
 
-function rX (Regno(r) : regno) -> xlenbits = {
-  let v : regtype =
-    match r {
-      0 => zero_reg,
-      1 => x1,
-      2 => x2,
-      3 => x3,
-      4 => x4,
-      5 => x5,
-      6 => x6,
-      7 => x7,
-      8 => x8,
-      9 => x9,
-      10 => x10,
-      11 => x11,
-      12 => x12,
-      13 => x13,
-      14 => x14,
-      15 => x15,
-      16 => x16,
-      17 => x17,
-      18 => x18,
-      19 => x19,
-      20 => x20,
-      21 => x21,
-      22 => x22,
-      23 => x23,
-      24 => x24,
-      25 => x25,
-      26 => x26,
-      27 => x27,
-      28 => x28,
-      29 => x29,
-      30 => x30,
-      31 => x31,
-    };
-  regval_from_reg(v)
+function rX_full (Regno(r) : regno) -> regtype = {
+  match r {
+    0 => zero_reg,
+    1 => x1,
+    2 => x2,
+    3 => x3,
+    4 => x4,
+    5 => x5,
+    6 => x6,
+    7 => x7,
+    8 => x8,
+    9 => x9,
+    10 => x10,
+    11 => x11,
+    12 => x12,
+    13 => x13,
+    14 => x14,
+    15 => x15,
+    16 => x16,
+    17 => x17,
+    18 => x18,
+    19 => x19,
+    20 => x20,
+    21 => x21,
+    22 => x22,
+    23 => x23,
+    24 => x24,
+    25 => x25,
+    26 => x26,
+    27 => x27,
+    28 => x28,
+    29 => x29,
+    30 => x30,
+    31 => x31,
+  }
 }
 
-function wX (Regno(r) : regno, in_v : xlenbits) -> unit = {
-  let v = regval_into_reg(in_v);
+function wX_full (Regno(r) : regno, v : regtype) -> unit = {
   match r {
     0  => (),
     1  => x1 = v,
@@ -211,7 +208,13 @@ function wX (Regno(r) : regno, in_v : xlenbits) -> unit = {
     29 => x29 = v,
     30 => x30 = v,
     31 => x31 = v,
-  };
+  }
+}
+
+function rX (r : regno) -> xlenbits = regval_from_reg(rX_full(r))
+
+function wX (Regno(r) : regno, in_v : xlenbits) -> unit = {
+  wX_full(Regno(r), regval_into_reg(in_v));
   if r != 0 then xreg_write_callback(Regidx(to_bits(r)), in_v)
 }
 
