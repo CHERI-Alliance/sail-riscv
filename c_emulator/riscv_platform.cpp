@@ -229,7 +229,7 @@ mach_bits sys_mideleg_writable_bits(unit u)
 
 bool sys_misa_x(unit u)
 {
-  return true;
+  return false;
 }
 
 mach_bits sys_pa_bits(unit u)
