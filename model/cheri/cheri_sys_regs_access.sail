@@ -91,6 +91,23 @@ function set_sscratchc(value : Capability) -> unit = {
 function get_mepc() -> xlenbits = align_pc(mepcc.address)
 function get_sepc() -> xlenbits = align_pc(sepcc.address)
 
+// Read-side counterpart to legalize_epcc(): a capability read of ?EPCC must
+// apply the same bit-1/IALIGN=32 align_pc() correction used in get_mepc().
+// This may clear the tag on read and cannot be done on write, since misa.C
+// can still change between the write and a later read (in which case bit 1
+// would report a different value).
+// Only call setCapAddrChecked() if the address actually changed to avoid
+// invalidating sentries that already have the correct address.
+function get_mepcc() -> Capability = {
+  let aligned = align_pc(mepcc.address);
+  if aligned == mepcc.address then mepcc else setCapAddrChecked(mepcc, aligned)
+}
+
+function get_sepcc() -> Capability = {
+  let aligned = align_pc(sepcc.address);
+  if aligned == sepcc.address then sepcc else setCapAddrChecked(sepcc, aligned)
+}
+
 function set_mepc(value : xlenbits) -> unit = {
   mepcc = setCapCSRAddr(mepcc, legalize_xepc(convertInvalidAddr(value)));
 }

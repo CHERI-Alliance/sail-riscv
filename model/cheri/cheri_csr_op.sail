@@ -115,11 +115,11 @@ function read_clen_csr(csr : csreg, write_val : Capability) -> Capability = matc
 
   0x305 => mtvecc,
   0x340 => mscratchc,
-  0x341 => mepcc, // Note: this would require legalisation for implementations with writable misa.C.
+  0x341 => get_mepcc(),
 
   0x105 => stvecc,
   0x140 => sscratchc,
-  0x141 => sepcc,
+  0x141 => get_sepcc(),
 
   0x416 => ddc,
 

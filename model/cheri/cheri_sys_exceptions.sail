@@ -86,21 +86,14 @@ val prepare_clic_xret_vectored_target : (Privilege) -> xlenbits
 
 function prepare_xret_target(p : Privilege) -> xlenbits = {
   let epcc : Capability = match p {
-                            Machine    => mepcc,
-                            Supervisor => sepcc,
-                            User       => internal_error(__FILE__, __LINE__, "N extension not supported"),
+                            Machine    => get_mepcc(),
+                            Supervisor => get_sepcc(),
+                            User       => internal_error(__FILE__, __LINE__, "Invalid privilege level"),
                           };
-
-  let aligned_addr = align_pc(epcc.address);
-  /* Only call setCapAddrChecked() if the address actually changed to
-   * avoid invalidating sentries that already have the correct address */
-  let aligned_epcc = if aligned_addr == epcc.address
-                     then epcc
-                     else setCapAddrChecked(epcc, aligned_addr);
-  set_next_pcc(unsealCap(aligned_epcc));
+  set_next_pcc(unsealCap(epcc));
   /* Similar to prepare_trap_vector above we need to return the absolute address
     destined for PC, rather than the offset (architecutral PC) */
-  aligned_addr
+  epcc.address
 }
 
 // TODO: This is duplicated in `riscv_sys_exceptions.sail` which is unfortunate.
