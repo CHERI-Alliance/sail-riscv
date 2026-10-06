@@ -111,7 +111,9 @@ val sys_medeleg_writable_bits = pure "sys_medeleg_writable_bits" : unit -> bits(
 val sys_mideleg_writable_bits = pure "sys_mideleg_writable_bits" : unit -> bits(64)
 val sys_xtvec_writable_bits = pure "sys_xtvec_writable_bits" : unit -> bits(64)
 
-val sys_xcause_bits = pure "sys_xcause_bits" : unit -> range(0, 64)
+// Number of writable bits in the xcause Cause field (at most xlen - 1, since
+// the top bit is IsInterrupt).
+val sys_xcause_bits = pure "sys_xcause_bits" : unit -> range(0, xlen - 1)
 
 /* Which PMP entries are writable. This is a bitmask. 1 means writable, 0 means read-only zero. */
 val sys_pmp_writable = pure "sys_pmp_writable" : unit -> bits(64)
@@ -555,6 +557,8 @@ register scause : Mcause
 
 function legalize_cause(v : xlenbits) -> Mcause = {
   let cause_bits = sys_xcause_bits();
+  // The type guarantees this, but the platform callback's return value is not
+  // checked at runtime, so keep a check against buggy implementations.
   assert(cause_bits <= xlen - 1);
 
   let m = Mk_Mcause(v);
