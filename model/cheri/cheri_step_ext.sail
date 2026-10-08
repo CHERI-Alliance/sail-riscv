@@ -29,12 +29,7 @@ function ext_reset_cheri() -> unit = {
   // dddc = {dddc with tag = false};
   // drootc = root_cap;
 
-  // Canonicalize so that all partially decoded fields are consistent again.
-  foreach (i from 1 to 31) {
-    let r = Regno(i);
-    let c = rX_full(r);
-    wX_full(r, bitsToCap(false, capToMetadataBits(c) @ c.address));
-  };
+  foreach (i from 1 to 31) wX_full(Regno(i), null_cap);
 }
 
 function ext_reset() -> unit = {
