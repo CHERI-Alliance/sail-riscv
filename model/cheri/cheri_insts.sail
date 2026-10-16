@@ -106,7 +106,7 @@ union clause instruction = YTAGR  : (regidx, regidx)
 union clause instruction = YMODER : (regidx, regidx)
 union clause instruction = YTYPER : (regidx, regidx)
 
-union clause instruction = SRLIY  : (regidx, regidx)
+union clause instruction = YHIR   : (regidx, regidx)
 
 /*!
  * insnref: ymoder_32bit brief
@@ -192,14 +192,14 @@ function clause execute (YTOPR(rd, rs1)) = {
 }
 
 /*!
- * insnref: srliy_32bit
+ * insnref: yhir_32bit
  * Capability get metadata
  *
- * srliy rd, rs1
+ * yhir rd, rs1
  *
  * Copy the metadata (bits [YLEN-1:XLEN]) of capability rs1 into rd.
  */
-function clause execute (SRLIY(rd, rs1)) = {
+function clause execute (YHIR(rd, rs1)) = {
   let rs1_cap = Y(rs1);
   X(rd) = capToMetadataBits(rs1_cap);
   RETIRE_SUCCESS
@@ -1033,11 +1033,8 @@ mapping clause encdec = YLENR(rd, rs1)                                          
   <-> 0b1111010 @ 0b00011 @ encdec_reg(rs1) @ 0b000 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled()
 mapping clause encdec = YTAGR(rd, rs1)                                           if cheri_registers_enabled()
   <-> 0b1111010 @ 0b00100 @ encdec_reg(rs1) @ 0b000 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled()
-
-mapping clause encdec = SRLIY(rd, rs1)                                           if cheri_registers_enabled() & xlen == 64
-  <-> 0b00000 @ 0b1000000 @ encdec_reg(rs1) @ 0b101 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled() & xlen == 64
-mapping clause encdec = SRLIY(rd, rs1)                                           if cheri_registers_enabled() & xlen == 32
-  <-> 0b00000 @ 0b0100000 @ encdec_reg(rs1) @ 0b101 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled() & xlen == 32
+mapping clause encdec = YHIR(rd, rs1)                                            if cheri_registers_enabled()
+  <-> 0b1111010 @ 0b00111 @ encdec_reg(rs1) @ 0b000 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled()
 
 mapping clause encdec = YMV(rd, rs1)                                             if cheri_registers_enabled()
   <-> 0b0000011 @ 0b00000 @ encdec_reg(rs1) @ 0b000 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled()
@@ -1054,10 +1051,7 @@ mapping clause assembly = YBASER(rd, rs1)  <-> "ybaser"  ^ spc() ^ reg_name(rd) 
 mapping clause assembly = YTOPR(rd, rs1)   <-> "ytopr"   ^ spc() ^ reg_name(rd)     ^ sep() ^ reg_name(rs1)
 mapping clause assembly = YLENR(rd, rs1)   <-> "ylenr"   ^ spc() ^ reg_name(rd)     ^ sep() ^ reg_name(rs1)
 mapping clause assembly = YTAGR(rd, rs1)   <-> "ytagr"   ^ spc() ^ reg_name(rd)     ^ sep() ^ reg_name(rs1)
-mapping clause assembly = SRLIY(rd, rs1)                                              if xlen == 32
-  <-> "srliy"   ^ spc() ^ reg_name(rd)     ^ sep() ^ reg_name(rs1) ^ sep() ^ "32" if xlen == 32
-mapping clause assembly = SRLIY(rd, rs1)                                              if xlen == 64
-  <-> "srliy"   ^ spc() ^ reg_name(rd)     ^ sep() ^ reg_name(rs1) ^ sep() ^ "64" if xlen == 64
+mapping clause assembly = YHIR(rd, rs1)    <-> "yhir"    ^ spc() ^ reg_name(rd)     ^ sep() ^ reg_name(rs1)
 
 mapping clause assembly = YMV(rd, rs1)     <-> "ymv"     ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1)
 mapping clause assembly = YSENTRY(rd, rs1) <-> "ysentry" ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1)
