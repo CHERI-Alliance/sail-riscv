@@ -1,4 +1,4 @@
-// Registers added for CHERI. Note that extended pre-existing registers are
+// Registers added for CHERI. Note that widened pre-existing registers are
 // not included here. Their names will lack the extra "C".
 
 // We don't need to add these to ext_read_CSR() or ext_write_CSR() since those
