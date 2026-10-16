@@ -881,6 +881,47 @@ function test_cheri_global() -> unit = {
     assert(Y(data_reg) == setArchPerms({data_cap with gl=0b0}, no_lg_perms));
 }
 
+function test_if_instr_reserved(instBits : bits(16), mode : PointerMode, expectReserved : bool) -> unit = {
+    PCC = {setCapMode(PCC, mode)};
+    let ast = ext_decode_compressed(instBits);
+    assert(execute(ast) == (if expectReserved then RETIRE_FAIL else RETIRE_SUCCESS))
+}
+
+function test_cheri_reserved_hints() -> unit = {
+    // Interesting cases:
+    // "Good" means still a nop in capmode.
+    // "Bad" means would not be a nop in capmode, so is reserved instead
+    // "Good" ADDI hint is nop instead
+    let good_c_nop_hint  = encdec_compressed(C_NOP(0b000000));
+    let bad_c_addi_hint  = encdec_compressed(C_ADDI(0b000000, Regidx(0b00001)));
+    let good_c_slli_zimm_hint = encdec_compressed(C_SLLI(0b000000, Regidx(0b00000)));
+    let good_c_slli_nzimm_hint = encdec_compressed(C_SLLI(0b000001, Regidx(0b00000)));
+    let bad_c_slli_hint  = encdec_compressed(C_SLLI(0b000000, Regidx(0b00001)));
+    // No "Good" sr{l,a}i hints as creg has no zero
+    let bad_c_srli_hint  = encdec_compressed(C_SRLI(0b000000, Cregidx(0b001)));
+    let bad_c_srai_hint  = encdec_compressed(C_SRAI(0b000000, Cregidx(0b001)));
+
+    // All hints enabled in int mode
+    test_if_instr_reserved(good_c_nop_hint       , IntPtrMode, false);
+    test_if_instr_reserved(bad_c_addi_hint       , IntPtrMode, false);
+    test_if_instr_reserved(good_c_slli_zimm_hint , IntPtrMode, false);
+    test_if_instr_reserved(good_c_slli_nzimm_hint, IntPtrMode, false);
+    test_if_instr_reserved(bad_c_slli_hint       , IntPtrMode, false);
+    test_if_instr_reserved(bad_c_srli_hint       , IntPtrMode, false);
+    test_if_instr_reserved(bad_c_srai_hint       , IntPtrMode, false);
+
+    // Good hints enabled in cap mode
+    test_if_instr_reserved(good_c_nop_hint       , CapPtrMode, false);
+    test_if_instr_reserved(good_c_slli_zimm_hint , CapPtrMode, false);
+    test_if_instr_reserved(good_c_slli_nzimm_hint, CapPtrMode, false);
+
+    // Bad hints reserved in cap mode
+    test_if_instr_reserved(bad_c_addi_hint, CapPtrMode, true);
+    test_if_instr_reserved(bad_c_slli_hint, CapPtrMode, true);
+    test_if_instr_reserved(bad_c_srli_hint, CapPtrMode, true);
+    test_if_instr_reserved(bad_c_srai_hint, CapPtrMode, true);
+}
+
 function test_main_ext() -> unit = {
     // Check reset state of misa.Y and xenvcfg.Y
     assert(misa[Y] == 0b1);
@@ -914,6 +955,7 @@ function test_main_ext() -> unit = {
     test_cheri_bad_jump();
     test_cheri_global();
     test_pte_ext();
+    test_cheri_reserved_hints();
     test_cheri_enables();
     print("CHERI tests passed\n");
 }

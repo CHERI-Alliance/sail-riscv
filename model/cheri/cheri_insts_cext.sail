@@ -287,3 +287,45 @@ mapping clause assembly = C_YMV(rd, rs2)
   if rd != zreg & rs2 != zreg
     <-> "c.ymv" ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs2)
   if rd != zreg & rs2 != zreg
+
+// Compressed hints are reserved in capmode where they would decode to something
+// that trashes metadata
+
+union clause instruction = C_ADDI_RVY_RESERVED_HINT : (regidx)
+union clause instruction = C_SLLI_RVY_RESERVED_HINT : (regidx)
+union clause instruction = C_SRLI_RVY_RESERVED_HINT : (cregidx)
+union clause instruction = C_SRAI_RVY_RESERVED_HINT : (cregidx)
+
+function clause execute (C_ADDI_RVY_RESERVED_HINT(rsd)) = Illegal_Instruction()
+function clause execute (C_SLLI_RVY_RESERVED_HINT(rsd)) = Illegal_Instruction()
+function clause execute (C_SRLI_RVY_RESERVED_HINT(rsd)) = Illegal_Instruction()
+function clause execute (C_SRAI_RVY_RESERVED_HINT(rsd)) = Illegal_Instruction()
+
+mapping clause encdec_compressed_capmode = C_ADDI_RVY_RESERVED_HINT(rsd)
+  if rsd != zreg
+    <-> 0b000 @ 0b0 @ encdec_reg(rsd) @ 0b00000 @ 0b01
+  if rsd != zreg
+mapping clause encdec_compressed_capmode = C_SLLI_RVY_RESERVED_HINT(rsd)
+  if rsd != zreg
+    <-> 0b000 @ 0b0 @ encdec_reg(rsd) @ 0b00000 @ 0b10
+  if rsd != zreg
+mapping clause encdec_compressed_capmode = C_SRLI_RVY_RESERVED_HINT(rsd)
+    <-> 0b100 @ 0b0 @ 0b00 @ encdec_creg(rsd) @ 0b00000 @ 0b01
+mapping clause encdec_compressed_capmode = C_SRAI_RVY_RESERVED_HINT(rsd)
+    <-> 0b100 @ 0b0 @ 0b01 @ encdec_creg(rsd) @ 0b00000 @ 0b01
+
+mapping clause assembly = C_ADDI_RVY_RESERVED_HINT(rsd)
+  if rsd != zreg
+    <-> "reserved (c.addi.hint " ^ reg_name(rsd) ^ ")"
+  if rsd != zreg
+
+mapping clause assembly = C_SLLI_RVY_RESERVED_HINT(rsd)
+  if rsd != zreg
+    <-> "reserved (c.slli.hint " ^ reg_name(rsd) ^ ")"
+  if rsd != zreg
+
+mapping clause assembly = C_SRLI_RVY_RESERVED_HINT(rsd)
+    <-> "reserved (c.srli.hint " ^ creg_name(rsd) ^ ")"
+
+mapping clause assembly = C_SRAI_RVY_RESERVED_HINT(rsd)
+    <-> "reserved (c.srai.hint " ^ creg_name(rsd) ^ ")"
