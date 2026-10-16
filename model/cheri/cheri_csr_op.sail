@@ -20,14 +20,14 @@ function csr_type(csr : csreg) -> CSRLen = match csr {
   0x140 => YlenExtended, // sscratch
   0x141 => YlenExtended, // sepc
 
-  0x780 => YlenNew, // mtidc
-  0x580 => YlenNew, // stidc
-  0x480 => YlenNew, // utidc
+  0x37f => YlenNew, // mtidc
+  0x17f => YlenNew, // stidc
+  0x07f => YlenNew, // utidc
 
-  0x7bc => YlenNew, // dddc
-  0x7bd => YlenNew, // drootc
+  0x7be => YlenNew, // drootc
+  0x7bf => YlenNew, // dddc
 
-  0x416 => YlenNew, // ddc
+  0x03f => YlenNew, // ddc
 
   _ => Standard,
 }
@@ -44,8 +44,8 @@ function write_ylen_csr(csr : csreg, value : Capability) -> unit = {
     // 0x7b1 => {set_dpcc(value); dpcc},
     // 0x7b2 => {set_dscratch0c(value); dscratch0c},
     // 0x7b3 => {set_dscratch1c(value); dscratch1c},
-    // 0x7bc => {set_dddc(value); dddc},
-    // 0x7bd => {set_drootc(value); drootc},
+    // 0x7be => {set_drootc(value); drootc},
+    // 0x7bf => {set_dddc(value); dddc},
 
     0x305 => {set_mtvec_y(value); mtvec_y},
     0x340 => {set_mscratch_y(value); mscratch_y},
@@ -55,11 +55,11 @@ function write_ylen_csr(csr : csreg, value : Capability) -> unit = {
     0x140 => {set_sscratch_y(value); sscratch_y},
     0x141 => {set_sepc_y(value); sepc_y},
 
-    0x416 => {set_ddc(value); ddc},
+    0x03f => {set_ddc(value); ddc},
 
-    0x780 => {set_mtidc(value); mtidc},
-    0x580 => {set_stidc(value); stidc},
-    0x480 => {set_utidc(value); utidc},
+    0x37f => {set_mtidc(value); mtidc},
+    0x17f => {set_stidc(value); stidc},
+    0x07f => {set_utidc(value); utidc},
 
     _ => internal_error(__FILE__, __LINE__, "write_ylen_csr for XLEN CSR; this should not be possible"),
   };
@@ -73,8 +73,8 @@ function write_ylen_csr_with_xlen(csr : csreg, value : xlenbits) -> unit = {
     // 0x7b1 => {let _ = set_dpc(value); dpcc},
     // 0x7b2 => {let _ = set_dscratch0(value); dscratch0c},
     // 0x7b3 => {let _ = set_dscratch1(value); dscratch1c},
-    // 0x7bc => {let _ = set_dddc_xlen(value); dddc},
-    // 0x7bd => {let _ = set_drootc_xlen(value); drootc},
+    // 0x7be => {let _ = set_drootc_xlen(value); drootc},
+    // 0x7bf => {let _ = set_dddc_xlen(value); dddc},
 
     0x305 => {set_mtvec(value); mtvec_y},
     0x340 => {set_mscratch(value); mscratch_y},
@@ -84,11 +84,11 @@ function write_ylen_csr_with_xlen(csr : csreg, value : xlenbits) -> unit = {
     0x140 => {set_sscratch(value); sscratch_y},
     0x141 => {set_sepc(value); sepc_y},
 
-    0x416 => {set_ddc_xlen(value); ddc},
+    0x03f => {set_ddc_xlen(value); ddc},
 
-    0x780 => {set_mtidc_xlen(value); mtidc},
-    0x580 => {set_stidc_xlen(value); stidc},
-    0x480 => {set_utidc_xlen(value); utidc},
+    0x37f => {set_mtidc_xlen(value); mtidc},
+    0x17f => {set_stidc_xlen(value); stidc},
+    0x07f => {set_utidc_xlen(value); utidc},
 
     _ => internal_error(__FILE__, __LINE__, "write_ylen_csr_with_xlen for XLEN CSR; this should not be possible"),
   };
@@ -101,8 +101,8 @@ function read_ylen_csr(csr : csreg, write_val : Capability) -> Capability = matc
   // 0x7b1 => dpcc,
   // 0x7b2 => dscratch0c,
   // 0x7b3 => dscratch1c,
-  // 0x7bc => dddc,
-  // 0x7bd => get_drootc(),
+  // 0x7be => get_drootc(),
+  // 0x7bf => dddc,
 
   0x305 => mtvec_y,
   0x340 => mscratch_y,
@@ -112,11 +112,11 @@ function read_ylen_csr(csr : csreg, write_val : Capability) -> Capability = matc
   0x140 => sscratch_y,
   0x141 => get_sepc_y(),
 
-  0x416 => ddc,
+  0x03f => ddc,
 
-  0x780 => mtidc,
-  0x580 => stidc,
-  0x480 => utidc,
+  0x37f => mtidc,
+  0x17f => stidc,
+  0x07f => utidc,
 
   _ => internal_error(__FILE__, __LINE__, "read_ylen_csr for XLEN CSR; this should not be possible"),
 }
