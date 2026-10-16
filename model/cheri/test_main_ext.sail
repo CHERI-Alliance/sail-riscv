@@ -606,6 +606,7 @@ function test_cheri_feature_enables(priv : Privilege, cheri_allowed : bool, expe
     let instEnc = 0b1111010 @ 0b00001 @ resR @ 0b000 @ resR @ 0b1111011; // ypermr manually encoded as encdec depends on mode!
     assert(execute_test(ext_decode(instEnc)) == (if cheri_allowed then RETIRE_SUCCESS else RETIRE_FAIL));
     if not(cheri_allowed) then assert_illegal_cause();
+    set_cur_privilege(Machine);
 }
 
 function test_cheri_pcc_mode(priv : Privilege, cheri_allowed : bool) -> unit = {
@@ -774,11 +775,18 @@ function test_cheri_bad_jump() -> unit = {
     assert(not(PCC.tag));
     assert(PCC.sealed);
     assert(fetch() == F_Ext_Error());
+
+    PCC = root_cap;
+    PC = zeros();
 }
 
 function test_main_ext() -> unit = {
+    // Check reset state of misa.Y and xenvcfg.Y
+    assert(misa[Y] == 0b1);
+    assert(menvcfg[Y] == 0b0);
+    assert(senvcfg[Y] == 0b0);
+
     // Enable CHERI
-    misa[Y] = 0b1;
     set_menvcfg(update_Y(menvcfg, 0b1).bits);
     set_senvcfg(update_Y(senvcfg, 0b1).bits);
 
@@ -803,6 +811,6 @@ function test_main_ext() -> unit = {
     test_cheri_malformed();
     test_cheri_invalid_addr();
     test_cheri_bad_jump();
-    //test_cheri_enables(); Disable while cheri enables hardwired high
+    test_cheri_enables();
     print("CHERI tests passed\n");
 }
