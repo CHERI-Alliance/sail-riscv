@@ -180,7 +180,7 @@ function is_root (c : Capability) -> bool = {
   not(c.sealed) &
   capBoundsInfinite(c) &
   c.sd_perms == ones() &
-  c.gl == ones() &
+  c.g == ones() &
   c.ap_p == root_ap_p
 }
 

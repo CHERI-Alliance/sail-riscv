@@ -74,7 +74,7 @@ struct Capability = {
   // Compressed architectural permissions and mode
   ap_p              : bits(cap_AP_P_width),
   // Capability level
-  gl                : bits(lvlbits),
+  g                 : bits(lvlbits),
   // Is the cap sealed.
   sealed            : bool,
   // Whether the exponent is zero or internal in the top/bottom fields.
@@ -129,7 +129,7 @@ function bitsToCap(tag : bool, cap_bits : CapBits) -> Capability = {
     tag               = tag,
     sd_perms          = meta.SDP,
     ap_p              = meta.AP_P,
-    gl                = meta.GL,
+    g                 = meta.G,
     sealed            = bool_bits(meta.CT),
     internal_exponent = internal_exponent,
     E                 = E,
@@ -167,7 +167,7 @@ function capToMetadataBits(cap : Capability) -> bits(xlen) = {
   let meta : EncMetadata = struct {
     SDP = cap.sd_perms,
     AP_P = cap.ap_p,
-    GL = cap.gl,
+    G = cap.g,
     CT = bool_bits(cap.sealed),
     EF = internal_exponent_encdec(cap.internal_exponent),
     Tm = cap.T[MW - 3 .. cap_xe_width],
@@ -190,7 +190,7 @@ let null_cap : Capability = struct {
   tag               = false,
   sd_perms          = zeros(),
   ap_p              = null_ap_p,
-  gl                = zeros(),
+  g                 = zeros(),
   sealed            = false,
   internal_exponent = true, // Encodes to 0.
   E                 = cap_max_E, // Encodes to 0.
@@ -206,7 +206,7 @@ let root_cap : Capability = {
   null_cap with
   tag      = true,
   sd_perms = ones(),
-  gl       = ones(),
+  g        = ones(),
   ap_p     = root_ap_p,
 }
 
@@ -418,7 +418,7 @@ bitfield BitPerms : xlenbits = {
   reserved_1_0  : 15                         .. 6 + cap_sd_perms_width,
   SDP           : 6 + cap_sd_perms_width - 1 .. 6,
   C             : 5,
-  GL            : 4,
+  G             : 4,
   SL            : 3,
   LG            : 2,
   LM            : 1,
@@ -440,7 +440,7 @@ function packPerms(arch_perms : ArchPerms, cap_level : bits(lvlbits), sd_perms :
     LM = bool_bits(arch_perms.LM),
     SL = bool_bits(arch_perms.SL),
     LG = bool_bits(arch_perms.LG),
-    GL = cap_level,
+    G = cap_level,
   ]
 
 function unpackPerms(perms : BitPerms) -> (ArchPerms, bits(lvlbits), bits(cap_sd_perms_width)) = {
@@ -455,14 +455,14 @@ function unpackPerms(perms : BitPerms) -> (ArchPerms, bits(lvlbits), bits(cap_sd
       SL = bool_bits(perms[SL]),
       LG = bool_bits(perms[LG]),
     };
-  (arch_perms, perms[GL], perms[SDP])
+  (arch_perms, perms[G], perms[SDP])
 }
 
 function getCapPermsLegalized(cap : Capability) -> BitPerms =
   if capIsMalformed(cap) then
     packPerms(null_perms, zeros(), zeros())
   else
-    packPerms(getArchPermsLegalized(cap), cap.gl, cap.sd_perms)
+    packPerms(getArchPermsLegalized(cap), cap.g, cap.sd_perms)
 
 function getCapLength(c : Capability) -> CapLenInt =
   match getCapBounds(c) {
@@ -537,12 +537,12 @@ function capIsSubset(c0 : Capability, c1 : Capability) -> bool = {
       (None(), _) => false,
       (_, None()) => false,
       (Some(c0_arch_perms), Some(c1_arch_perms)) => {
-        let c0_perms_packed = packPerms(c0_arch_perms, c0.gl, c0.sd_perms).bits;
-        let c1_perms_packed = packPerms(c1_arch_perms, c1.gl, c1.sd_perms).bits;
+        let c0_perms_packed = packPerms(c0_arch_perms, c0.g, c0.sd_perms).bits;
+        let c1_perms_packed = packPerms(c1_arch_perms, c1.g, c1.sd_perms).bits;
         (c0_perms_packed & c1_perms_packed) == c0_perms_packed;
       }
   };
-  let level_subset = c0.gl <=_u c1.gl;
+  let level_subset = c0.g <=_u c1.g;
   // Not a subset if reserved bits are set in either cap
   let reserved_valid = capReservedValid(c0) & capReservedValid(c1);
   bounds_subset & perms_subset & level_subset & reserved_valid;
@@ -579,20 +579,20 @@ function legalizeLoadedArchPerms(loaded_cap : Capability, auth_cap : Capability)
   } else loaded_cap
 }
 
-function restrictLoadedGL(loaded_cap : Capability, auth_cap : Capability) -> Capability = {
+function restrictLoadedG(loaded_cap : Capability, auth_cap : Capability) -> Capability = {
   // Any unsealed capability with its tag set to 1 that is loaded from memory has
-  // ... its Capability Level (GL) restricted if the authorizing capability
-  // does not grant LG-permission. If sealed, then only GL is modified ...
+  // ... its Capability Level (G) restricted if the authorizing capability
+  // does not grant LG-permission. If sealed, then only G is modified ...
 
-  let restrictGL = loaded_cap.tag & not(canLG(auth_cap));
-  if restrictGL then {loaded_cap with gl = 0b0} else loaded_cap
+  let restrictG = loaded_cap.tag & not(canLG(auth_cap));
+  if restrictG then {loaded_cap with g = 0b0} else loaded_cap
 }
 
 function legalizeSL(stored_cap : Capability, auth_cap : Capability) -> Capability = {
   // When storing a capability, if the authorizing capability does not grant SL-perm
-  // and the stored cap has GL == 0 clear the tag of the stored capability,
+  // and the stored cap has G == 0 clear the tag of the stored capability,
   // otherwise store the cap data unmodified.
-  let cond = not(canSL(auth_cap)) & stored_cap.gl == zeros();
+  let cond = not(canSL(auth_cap)) & stored_cap.g == zeros();
   clearTagIf(stored_cap, cond)
 }
 
@@ -601,8 +601,8 @@ function legalizeSL(stored_cap : Capability, auth_cap : Capability) -> Capabilit
 let sys_legalize_malformed_permission_on_load = false
 
 function legalizeLoadedPermissions(loaded_cap : Capability, auth_cap : Capability) -> Capability = {
-  // GL is not a permission so it is always legalized.
-  let loaded_cap = restrictLoadedGL(loaded_cap, auth_cap);
+  // G is not a permission so it is always legalized.
+  let loaded_cap = restrictLoadedG(loaded_cap, auth_cap);
 
   // Malformed permissions are optionally legalized.
   if not(permsMalformed(loaded_cap)) | sys_legalize_malformed_permission_on_load then {
@@ -692,7 +692,7 @@ function capToString(cap : Capability) -> string = {
   " sealed:" ^ (if cap.sealed then "1" else "0") ^
   " perms:" ^ arch_perms_str ^
   " sdperms:" ^ bits_str(cap.sd_perms) ^
-  " level:" ^ bits_str(cap.gl) ^
+  " level:" ^ bits_str(cap.g) ^
   " mode:" ^ cheri_mode ^
   raw_str ^ res_str
 }
