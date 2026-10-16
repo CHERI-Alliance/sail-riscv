@@ -7,6 +7,7 @@ env:
 
 jobs:
   build:
+    if: github.repository == 'riscv/sail-riscv'
     strategy:
       matrix:
         version: [5.2.1]
