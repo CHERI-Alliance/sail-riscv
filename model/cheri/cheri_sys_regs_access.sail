@@ -1,4 +1,4 @@
-// This file contains overrides for accessing YLEN extended CSRs and their
+// This file contains overrides for accessing YLEN widened CSRs and their
 // XLEN aliases.
 //
 // E.g. for `mtvec[c]` we have:

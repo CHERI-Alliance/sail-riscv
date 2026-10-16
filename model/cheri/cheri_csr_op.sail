@@ -2,23 +2,23 @@ enum CSRLen = {
   // Standard RISC-V CSR
   Standard,
   // XLEN CSR extended to YLEN
-  YlenExtended,
+  YlenWidened,
   // New YLEN CSR
   YlenNew,
 }
 
 function csr_type(csr : csreg) -> CSRLen = match csr {
-  0x7b1 => YlenExtended, // dpc
-  0x7b2 => YlenExtended, // dscratch0
-  0x7b3 => YlenExtended, // dscratch1
+  0x7b1 => YlenWidened, // dpc
+  0x7b2 => YlenWidened, // dscratch0
+  0x7b3 => YlenWidened, // dscratch1
 
-  0x305 => YlenExtended, // mtvec
-  0x340 => YlenExtended, // mscratch
-  0x341 => YlenExtended, // mepc
+  0x305 => YlenWidened, // mtvec
+  0x340 => YlenWidened, // mscratch
+  0x341 => YlenWidened, // mepc
 
-  0x105 => YlenExtended, // stvec
-  0x140 => YlenExtended, // sscratch
-  0x141 => YlenExtended, // sepc
+  0x105 => YlenWidened, // stvec
+  0x140 => YlenWidened, // sscratch
+  0x141 => YlenWidened, // sepc
 
   0x37f => YlenNew, // mtidc
   0x17f => YlenNew, // stidc
@@ -33,7 +33,7 @@ function csr_type(csr : csreg) -> CSRLen = match csr {
 }
 
 // Return true if this is a YLEN-width CSR.
-function is_ylen_csr(csr : csreg) -> bool = csr_type(csr) == YlenExtended | csr_type(csr) == YlenNew
+function is_ylen_csr(csr : csreg) -> bool = csr_type(csr) == YlenWidened | csr_type(csr) == YlenNew
 
 // Write a capability CSR (is_ylen_csr(csr) is true) with a Capability.
 // It may undergo invalid address conversion.
