@@ -32,6 +32,9 @@ overload Y = {rY_bits, wY_bits, rY, wY}
  */
 val ext_rvfi_reset : unit -> unit
 function ext_rvfi_reset () = {
+  // TestRIG templates drop to S/U-mode without setting xenvcfg.Y first.
+  menvcfg[Y] = 0b1;
+  senvcfg[Y] = 0b1;
   foreach (i from 1 to 31) wX_full(Regno(i), root_cap);
 }
 
