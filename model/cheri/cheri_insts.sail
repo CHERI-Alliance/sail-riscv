@@ -205,17 +205,17 @@ function clause execute (YHIR(rd, rs1)) = {
   RETIRE_SUCCESS
 }
 
-union clause instruction = PACKY : (regidx, regidx, regidx)
+union clause instruction = YHIW : (regidx, regidx, regidx)
 /*!
- * insnref: packy_32bit
+ * insnref: yhiw_32bit
  * Capability set metadata
  *
- * packy rd, rs1, rs2
+ * yhiw rd, rs1, rs2
  *
- * Packs the least-significant XLEN-bits of rs1 and rs2 into
- * rd, and set rd.tag=0.
+ * Copy rs1[XLEN-1:0] into rd[XLEN-1:0], copy rs2[XLEN-1:0] into
+ * rd[YLEN-1:XLEN], and set rd.tag=0.
  */
-function clause execute (PACKY(rd, rs1, rs2)) = {
+function clause execute (YHIW(rd, rs1, rs2)) = {
   let lo = X(rs1);
   let hi = X(rs2);
   let newCap = bitsToCap(false, hi @ lo);
@@ -550,7 +550,7 @@ union clause instruction = YBLD : (regidx, regidx, regidx)
  * . rs2's permissions could have been legally produced by YPERMC, and
  * . All reserved bits in rs2's metadata are 0;
  * Otherwise, copy rs2 to rd and clear rd's tag.
- * YBLD is typically used alongside PACKY to build capabilities from
+ * YBLD is typically used alongside YHIW to build capabilities from
  * integer values.
  */
 function clause execute (YBLD(rd, rs1, rs2)) = {
@@ -1066,7 +1066,7 @@ mapping clause encdec = YMODEW(rd, rs1, rs2)                                    
   <-> 0b0101011 @ encdec_reg(rs2) @ encdec_reg(rs1) @ 0b000 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled() & (rd != zreg)
 mapping clause encdec = YADDRW(rd, rs1, rs2)                                             if cheri_registers_enabled()
   <-> 0b0001011 @ encdec_reg(rs2) @ encdec_reg(rs1) @ 0b000 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled()
-mapping clause encdec = PACKY(rd, rs1, rs2)                                              if cheri_registers_enabled()
+mapping clause encdec = YHIW(rd, rs1, rs2)                                               if cheri_registers_enabled()
   <-> 0b0000001 @ encdec_reg(rs2) @ encdec_reg(rs1) @ 0b000 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled()
 mapping clause encdec = YADD(rd, rs1, rs2)                                               if cheri_registers_enabled() & (rs2 != zreg)
   <-> 0b0000011 @ encdec_reg(rs2) @ encdec_reg(rs1) @ 0b000 @ encdec_reg(rd) @ 0b1111011 if cheri_registers_enabled() & (rs2 != zreg)
@@ -1092,7 +1092,7 @@ mapping clause encdec = YBNDSWI(rd, rs1, uimm9)                                 
 mapping clause assembly = YPERMC(rd, rs1, rs2)   <-> "ypermc"   ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
 mapping clause assembly = YMODEW(rd, rs1, rs2)   <-> "ymodew"   ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
 mapping clause assembly = YADDRW(rd, rs1, rs2)   <-> "yaddrw"   ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
-mapping clause assembly = PACKY(rd, rs1, rs2)    <-> "packy"    ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
+mapping clause assembly = YHIW(rd, rs1, rs2)     <-> "yhiw"     ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
 mapping clause assembly = YADD(rd, rs1, rs2)     <-> "yadd"     ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
 mapping clause assembly = YBNDSRW(rd, rs1, rs2)  <-> "ybndsrw"  ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
 mapping clause assembly = YBNDSW(rd, rs1, rs2)   <-> "ybndsw"   ^ spc() ^ reg_name(rd) ^ sep() ^ reg_name(rs1) ^ sep() ^ reg_name(rs2)
