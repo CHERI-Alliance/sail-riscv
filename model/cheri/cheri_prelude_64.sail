@@ -32,8 +32,8 @@ let  cap_E_width_32 = sizeof(cap_E_width_32)
 type cap_AP_P_width_32 : Int = 5
 let  cap_AP_P_width_32 = sizeof(cap_AP_P_width_32)
 
-// Whether setbounds can use the L8 bit for extra precision in the implied E=0 case.
-let cap_use_L8_32 : bool = true
+// Whether setbounds can use the LE bit for extra precision in the implied E=0 case.
+let cap_use_LE_32 : bool = true
 
 // Capability format metadata completely compressed. Tag is out of band.
 bitfield EncMetadata_32 : bits(32) = {
@@ -53,8 +53,8 @@ bitfield EncMetadata_32 : bits(32) = {
   // Exponent Format.
   EF         : 19,
   // Either MSB of exponent or MSB of length depending on EF.
-  L8         : 18,
-  // Top bits, not including L8 or TE.
+  LE         : 18,
+  // Top bits, not including LE or TE.
   Tm         : 17 .. 12,
   // Lowest bits of T, that may be part of the exponent depending on EF.
   TE         : 11 .. 10,
@@ -113,11 +113,11 @@ function legalizePermsAndMode_32(perms : ArchPerms, mode : PointerMode) -> (Arch
   (perms, mode)
 }
 
-// Needed because there's no L8 in the RV64 version.
-function getMetadataL8_32(meta : EncMetadata_32) -> bits(1) = meta[L8]
-function setMetadataL8_32(meta : EncMetadata_32, L8 : bits(1)) -> EncMetadata_32 =
-  [ meta with L8 = L8 ]
+// Needed because there's no LE in the RV64 version.
+function getMetadataLE_32(meta : EncMetadata_32) -> bits(1) = meta[LE]
+function setMetadataLE_32(meta : EncMetadata_32, LE : bits(1)) -> EncMetadata_32 =
+  [ meta with LE = LE ]
 
 // Get the internal exponent. This is only meaningful if EF is "internal".
 function getMetadataInternalExponent_32(meta : EncMetadata_32) -> bits(cap_E_width_32) =
-  meta[L8] @ meta[TE] @ meta[BE]
+  meta[LE] @ meta[TE] @ meta[BE]
