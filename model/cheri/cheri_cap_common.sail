@@ -59,7 +59,7 @@ let lvlbits = sizeof(lvlbits)
 mapping internal_exponent_encdec : bool <-> bits(1) = {
   // Exponent is zero.
   false <-> 0b1,
-  // Exponent is internal (stored in L8, TE, BE).
+  // Exponent is internal (stored in LE, TE, BE).
   true <-> 0b0,
 }
 
@@ -110,7 +110,7 @@ function bitsToCap(tag : bool, cap_bits : CapBits) -> Capability = {
   // When the exponent is non-zero (internal_exponent is true) we implicitly
   // store the leading 1, just as with normal floating point numbers.
   // The case when the exponent is zero is equivalent to subnormals.
-  let LMSB = if internal_exponent then 0b01 else 0b0 @ getMetadataL8(meta);
+  let LMSB = if internal_exponent then 0b01 else 0b0 @ getMetadataLE(meta);
 
   // `not()` so type infererence for zeros() works.
   let T_low = if not(internal_exponent) then meta.TE else zeros();
@@ -147,8 +147,8 @@ function capToMetadataBits(cap : Capability) -> bits(xlen) = {
   // Convert the exponent back to encoded form.
   let E = to_bits(cap_E_width, cap_max_E - cap.E);
 
-  // The L8 value here is ignored on RV64.
-  let (L8, TE, BE) = if cap.internal_exponent then {
+  // The LE value here is ignored on RV64.
+  let (LE, TE, BE) = if cap.internal_exponent then {
     (
       E[cap_E_width - 1],
       E[cap_xe_width * 2 - 1 .. cap_xe_width],
@@ -176,10 +176,10 @@ function capToMetadataBits(cap : Capability) -> bits(xlen) = {
     BE = BE,
     reserved_1 = cap.reserved_1,
     reserved_0 = cap.reserved_0,
-    L8 = zeros()
+    LE = zeros()
   };
-  // Set L8 on RV32. Does nothing on RV64.
-  let meta = setMetadataL8(meta, [L8]);
+  // Set LE on RV32. Does nothing on RV64.
+  let meta = setMetadataLE(meta, [LE]);
   enc_EncMetadata(meta)
 }
 
@@ -218,7 +218,7 @@ function boundsMalformed(cap : Capability) -> bool = {
 
     let malformedMSB = (cap.E == cap_max_E     & cap.B         != zeros(MW)) |
                        (cap.E == cap_max_E - 1 & cap.B[MW - 1] != bitzero);
-    let malformedLSB = cap.E < 0 | (cap_use_L8 & cap.E == 0);
+    let malformedLSB = cap.E < 0 | (cap_use_LE & cap.E == 0);
     malformedMSB | malformedLSB
   })
 }
@@ -293,7 +293,7 @@ function setCapBounds(cap : Capability, base : CapAddrBits, top : CapLenBits) ->
   let e = cap_max_E - count_leading_zeros(length[cap_addr_width..cap_mantissa_width - 1]);
   // Use use internal exponent if e is non-zero or if e is zero but
   // the implied bit of length is not zero (denormal vs. normal case)
-  let ie = (e != 0) | (not(cap_use_L8) & length[cap_mantissa_width - 2] == bitone);
+  let ie = (e != 0) | (not(cap_use_LE) & length[cap_mantissa_width - 2] == bitone);
 
   /* The non-ie e == 0 case is easy. It is exact so just extract relevant bits. */
   var Bbits = truncate(base, cap_mantissa_width);

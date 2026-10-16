@@ -27,7 +27,7 @@ let  cap_E_width = sizeof(cap_E_width)
 type cap_AP_P_width : Int = if xlen == 32 then cap_AP_P_width_32 else cap_AP_P_width_64
 let  cap_AP_P_width = sizeof(cap_AP_P_width)
 
-let cap_use_L8 : bool = if xlen == 32 then cap_use_L8_32 else cap_use_L8_64
+let cap_use_LE : bool = if xlen == 32 then cap_use_LE_32 else cap_use_LE_64
 
 struct EncMetadata = {
   SDP : bits(cap_sd_perms_width),
@@ -41,7 +41,7 @@ struct EncMetadata = {
   BE : bits(if xlen == 32 then 2 else 3),
   reserved_1 : bits(cap_reserved_1_width),
   reserved_0 : bits(cap_reserved_0_width),
-  L8 : bits(if xlen == 32 then 1 else 0)
+  LE : bits(if xlen == 32 then 1 else 0)
 }
 
 val dec_EncMetadata : bits(xlen) -> EncMetadata
@@ -60,7 +60,7 @@ function dec_EncMetadata(meta_bits) = {
       BE = m32[BE],
       reserved_1 = m32[reserved_1],
       reserved_0 = m32[reserved_0],
-      L8 = m32[L8]
+      LE = m32[LE]
     }
   } else {
     let m64 = Mk_EncMetadata_64(slice(meta_bits, 0, 64));
@@ -76,7 +76,7 @@ function dec_EncMetadata(meta_bits) = {
       BE = m64[BE],
       reserved_1 = m64[reserved_1],
       reserved_0 = m64[reserved_0],
-      L8 = zeros()
+      LE = zeros()
     }
   }
 }
@@ -97,7 +97,7 @@ function enc_EncMetadata(meta) = {
       BE = meta.BE,
       reserved_1 = meta.reserved_1,
       reserved_0 = meta.reserved_0,
-      L8 = meta.L8
+      LE = meta.LE
     ];
     m32.bits
   } else {
@@ -163,14 +163,14 @@ function legalizePermsAndMode(perms : ArchPerms, mode : PointerMode) -> (ArchPer
   }
 }
 
-// Needed because there's no L8 in the RV64 version.
-function getMetadataL8(meta : EncMetadata) -> bits(1) = {
-  if xlen == 32 then meta.L8 else 0b0
+// Needed because there's no LE in the RV64 version.
+function getMetadataLE(meta : EncMetadata) -> bits(1) = {
+  if xlen == 32 then meta.LE else 0b0
 }
 
-function setMetadataL8(meta : EncMetadata, L8 : bits(1)) -> EncMetadata = {
+function setMetadataLE(meta : EncMetadata, LE : bits(1)) -> EncMetadata = {
   if xlen == 32 then {
-    {meta with L8 = L8}
+    {meta with LE = LE}
   } else {
     meta
   }
@@ -179,7 +179,7 @@ function setMetadataL8(meta : EncMetadata, L8 : bits(1)) -> EncMetadata = {
 // Get the internal exponent. This is only meaningful if EF is "internal".
 function getMetadataInternalExponent(meta : EncMetadata) -> bits(cap_E_width) = {
   if xlen == 32 then {
-    meta.L8 @ meta.TE @ meta.BE
+    meta.LE @ meta.TE @ meta.BE
   } else {
     meta.TE @ meta.BE
   }

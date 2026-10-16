@@ -192,7 +192,7 @@ function check_format(
     assert(to_bits(cap_len_width, getCapLength(Y(dstR))) == aimLen);
 }
 
-function test_cheri_l8() -> unit = {
+function test_cheri_le() -> unit = {
     if (xlen != 32) then return ();
     let capR : regidx = Regidx(0b00001);
     let lenR : regidx = Regidx(0b00010);
@@ -201,12 +201,12 @@ function test_cheri_l8() -> unit = {
     let impliedLen  = 0b00_1111_1111;
     X(lenR) = zero_extend(impliedLen);
     check_format(capR, lenR, dstR, 0, false, zero_extend(impliedLen));
-    let l8LoLen     = 0b01_0000_0000;
-    X(lenR) = zero_extend(l8LoLen);
-    check_format(capR, lenR, dstR, 0, false, zero_extend(l8LoLen));
-    let l8HiLen     = 0b01_1111_1111;
-    X(lenR) = zero_extend(l8HiLen);
-    check_format(capR, lenR, dstR, 0, false, zero_extend(l8HiLen));
+    let leLoLen     = 0b01_0000_0000;
+    X(lenR) = zero_extend(leLoLen);
+    check_format(capR, lenR, dstR, 0, false, zero_extend(leLoLen));
+    let leHiLen     = 0b01_1111_1111;
+    X(lenR) = zero_extend(leHiLen);
+    check_format(capR, lenR, dstR, 0, false, zero_extend(leHiLen));
     let internalLen = 0b10_0000_0000;
     X(lenR) = zero_extend(internalLen);
     check_format(capR, lenR, dstR, 1, true, zero_extend(internalLen));
@@ -218,9 +218,9 @@ function encodable(c : Capability) -> bool =
     bitsToCap(c.tag, capToMetadataBits(c) @ c.address) == c
 
 function test_cheri_redundant() -> unit = {
-    // Construct capabilities that are redundant with the L8 bit:
+    // Construct capabilities that are redundant with the LE bit:
     // an internal exponent loses the bottom bits of B and T to encode the exponent,
-    // L8 keeps those bits by setting L8 to 1 and maintaining an implied exponent
+    // LE keeps those bits by setting LE to 1 and maintaining an implied exponent
     let badCap =
       {
          root_cap with
@@ -941,7 +941,7 @@ function test_main_ext() -> unit = {
     test_cheri_system_faults();
     test_cheri_nofastrep();
     test_cheri_zba();
-    test_cheri_l8();
+    test_cheri_le();
     test_cheri_redundant();
     test_cheri_reserved_load_store();
     test_cheri_rounding();
