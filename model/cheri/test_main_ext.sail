@@ -296,15 +296,15 @@ function test_cheri_permission_encoding() -> unit = {
     let cap_x_cleared = setArchPerms(intmode_inf, all_perms_but_x);
     assert(getCapMode(cap_x_cleared) == CapPtrMode);
 
-    // YPERMC on a sealed capability preserves the tag when only clearing GL
+    // YPERMC on a sealed capability preserves the tag when only clearing G
     // (or when no AP/SDP bits change), and clears the tag when AP or SDP changes.
     let sealed_root = sealCap(root_cap);
     Y(capR) = sealed_root;
     assert(execute(YPERMC(dstR, capR, zreg)) == RETIRE_SUCCESS);
     assert(Y(dstR) == sealed_root);
-    X(modeR) = [Mk_BitPerms(zeros()) with GL = 0b1].bits;
+    X(modeR) = [Mk_BitPerms(zeros()) with G = 0b1].bits;
     assert(execute(YPERMC(dstR, capR, modeR)) == RETIRE_SUCCESS);
-    assert(Y(dstR) == {sealed_root with gl = 0b0});
+    assert(Y(dstR) == {sealed_root with g = 0b0});
     X(modeR) = [Mk_BitPerms(zeros()) with W = 0b1].bits;
     assert(execute(YPERMC(dstR, capR, modeR)) == RETIRE_SUCCESS);
     assert(not(Y(dstR).tag));
@@ -549,19 +549,19 @@ function test_cheri_malformed() -> unit = {
     assert_behaviour(badPermsCap   , capR, outR, instr, None(), true, {badPermsCap with tag=false}    , undefined);
     assert_behaviour(badReservedCap, capR, outR, instr, None(), true, {badReservedCap with tag=false} , undefined);
 
-    // YPERMR returns zero for all allocated permission bits (AP, GL, SDP) if any fields are malformed.
+    // YPERMR returns zero for all allocated permission bits (AP, G, SDP) if any fields are malformed.
     let instr = YPERMR(outR, capR);
     let nullPermsBits = getCapPermsLegalized(null_cap).bits;
     assert_behaviour(badBoundsCap  , capR, outR, instr, None(), false, undefined, nullPermsBits);
     assert_behaviour(badPermsCap   , capR, outR, instr, None(), false, undefined, nullPermsBits);
     assert_behaviour(badReservedCap, capR, outR, instr, None(), false, undefined, nullPermsBits);
 
-    // YPERMC legalises the *perms*. Clears tag, AP, P, GL, and SDP if any fields are malformed.
+    // YPERMC legalises the *perms*. Clears tag, AP, P, G, and SDP if any fields are malformed.
     let instr = YPERMC(outR, capR, otherR);
     X(otherR) = zeros();
-    assert_behaviour(badBoundsCap  , capR, outR, instr, None(), true, {badBoundsCap with ap_p = zeros(), gl = zeros(), sd_perms = zeros(), tag=false}   , undefined);
-    assert_behaviour(badPermsCap   , capR, outR, instr, None(), true, {badPermsCap with ap_p = zeros(), gl = zeros(), sd_perms = zeros(), tag=false}    , undefined);
-    assert_behaviour(badReservedCap, capR, outR, instr, None(), true, {badReservedCap with ap_p = zeros(), gl = zeros(), sd_perms = zeros(), tag=false} , undefined);
+    assert_behaviour(badBoundsCap  , capR, outR, instr, None(), true, {badBoundsCap with ap_p = zeros(), g = zeros(), sd_perms = zeros(), tag=false}   , undefined);
+    assert_behaviour(badPermsCap   , capR, outR, instr, None(), true, {badPermsCap with ap_p = zeros(), g = zeros(), sd_perms = zeros(), tag=false}    , undefined);
+    assert_behaviour(badReservedCap, capR, outR, instr, None(), true, {badReservedCap with ap_p = zeros(), g = zeros(), sd_perms = zeros(), tag=false} , undefined);
 
     // YSS checks all the fields.
     let (_, zeroCapTagged) = setCapBounds({ null_cap with tag=true }, zeros(), zeros());
@@ -878,7 +878,7 @@ function test_cheri_global() -> unit = {
 
     assert(execute(StoreCapImm(data_reg, auth_reg, zeros())) == RETIRE_SUCCESS);
     assert(execute(LoadCapImm(data_reg, auth_reg, zeros())) == RETIRE_SUCCESS);
-    assert(Y(data_reg) == setArchPerms({data_cap with gl=0b0}, no_lg_perms));
+    assert(Y(data_reg) == setArchPerms({data_cap with g=0b0}, no_lg_perms));
 }
 
 function test_if_instr_reserved(instBits : bits(16), mode : PointerMode, expectReserved : bool) -> unit = {

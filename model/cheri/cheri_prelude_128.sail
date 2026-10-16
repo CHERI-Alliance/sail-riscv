@@ -44,7 +44,7 @@ bitfield EncMetadata_64 : bits(64) = {
   // Architectural Permissions and Mode (encoded together).
   AP_P       : 52 .. 44,
   // Capability Level
-  GL         : 43,
+  G          : 43,
   // Lower reserved area.
   reserved_0 : 42 .. 28,
   // Capability Type bit.

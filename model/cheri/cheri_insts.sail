@@ -275,8 +275,8 @@ function clause execute(YPERMC(rd, rs1, rs2)) = {
 
   let new_perms = old_perms & ~(rs2_val);
 
-  let (new_arch_perms, new_gl, new_sd_perms) = unpackPerms(struct {bits = new_perms});
-  let newCap = { setArchPerms(rs1_cap, new_arch_perms) with gl = new_gl, sd_perms = new_sd_perms };
+  let (new_arch_perms, new_g, new_sd_perms) = unpackPerms(struct {bits = new_perms});
+  let newCap = { setArchPerms(rs1_cap, new_arch_perms) with g = new_g, sd_perms = new_sd_perms };
 
   // YPERMC only clears the tag on a sealed capability if AP or SDP bits are modified;
   // clearing GL (or masking with zero / already-clear bits) preserves the tag.
