@@ -22,7 +22,6 @@ function execute_test(ast : instruction) -> ExecutionResult = {
     Illegal_Instruction() => { handle_illegal(zeros()); RETIRE_FAIL },
     Translate_Exception(vaddr, exc, _) => { handle_translate_exception(vaddr, exc); RETIRE_FAIL },
     CHERI_Exception(ty, vaddr) => { handle_cheri_exception(ty, vaddr); RETIRE_FAIL },
-    Ext_CSR_Check_Failure(fail_type) => { ext_check_CSR_fail(fail_type); RETIRE_FAIL },
     Ext_DataAddr_Check_Failure(e) => { ext_handle_data_check_error(e); RETIRE_FAIL },
   }
 }
@@ -397,7 +396,8 @@ function test_csr_access_priv_asr_rw(csr : string, priv : Privilege, asr : bool,
     let dst = if write then zreg else Regidx(0b00001);
     let op = if write then CSRRW else CSRRS;
     let ret = attempt_csr_access(priv, asr, op, csr_name_map(csr), src, dst);
-    assert(ret == (if allowed then RETIRE_SUCCESS else RETIRE_FAIL))
+    assert(ret == (if allowed then RETIRE_SUCCESS else RETIRE_FAIL));
+    if not(allowed) then assert_illegal_cause();
 }
 
 function test_csr_access_priv_asr(csr : string, priv : Privilege, asr : bool, allowed : bool, ro : bool) -> unit = {

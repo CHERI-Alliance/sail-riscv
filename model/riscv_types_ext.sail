@@ -53,8 +53,5 @@ function num_of_ext_exc_type(e) = 24 /* First code for a custom extension */
 val ext_exc_type_to_str : ext_exc_type -> string
 function ext_exc_type_to_str(e) = "extension-exception"
 
-/* This type supports extensions to the exceptions reported by CSR accesses. */
-type ext_csr_exc_type = unit
-
 /* Default fetch address checks */
 type ext_fetch_addr_error = unit
