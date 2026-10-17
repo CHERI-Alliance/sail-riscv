@@ -26,6 +26,17 @@ function check_CSR_priv(csr : csreg, p : Privilege) -> bool =
 function check_CSR_access(csr : csreg, isWrite : bool) -> bool =
   not(isWrite & (csrAccess(csr) == 0b11))
 
+// Require ASR on any CSR that is not "unprivileged", i.e. accessible from U mode.
+// The exception for this is Zstid CSRs which always require ASR on writes and
+// never require ASR on reads.
+// TODO: Once https://github.com/riscv/sail-riscv/pull/1140
+// (is_CSR_accessible(csr, p, isWrite)) is merged, the Zstid write-only ASR
+// check can move into the xtid is_CSR_accessible clauses in cheri_csr_ext.sail.
+function check_CSR_ASR(csr : csreg, isWrite : bool) -> bool = {
+  let requires_asr = if is_zstid_csr(csr) then isWrite else not(check_CSR_priv(csr, User));
+  pcc_access_system_regs() | not(requires_asr)
+}
+
 function check_TVM_SATP(csr : csreg, p : Privilege) -> bool =
   not(csr == 0x180 & p == Supervisor & mstatus[TVM] == 0b1)
 
@@ -78,6 +89,7 @@ function check_CSR(csr : csreg, p : Privilege, isWrite : bool) -> bool =
     is_CSR_defined(csr)
   & check_CSR_priv(csr, p)
   & check_CSR_access(csr, isWrite)
+  & check_CSR_ASR(csr, isWrite)
   // TODO: If we add `p` back to is_CSR_defined() we could move these three
   // check_ functions back there. We should also rename is_CSR_defined()
   // to is_CSR_accessible() or similar.

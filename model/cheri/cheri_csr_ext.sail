@@ -6,6 +6,9 @@
 // handle_csr_op().
 
 function clause is_CSR_defined(0x416) = cheri_registers_enabled() // ddc
+// TODO: Once https://github.com/riscv/sail-riscv/pull/1140
+// (is_CSR_accessible(csr, p, isWrite)) is merged, check
+// `not(isWrite) | pcc_access_system_regs()` here for mtid/stid/utid.
 function clause is_CSR_defined(0x780) = haveZstid() // mtid
 function clause is_CSR_defined(0x580) = haveZstid() // stid
 function clause is_CSR_defined(0x480) = haveZstid() // utid

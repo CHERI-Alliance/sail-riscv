@@ -29,6 +29,9 @@ register mepc_y     : Capability
 
 /* Cheri pcc helpers */
 
+val pcc_access_system_regs : unit -> bool
+function pcc_access_system_regs () = canASR(PCC)
+
 // Return the minimum number of bytes in an instruction supported
 // by the implementation. If writable misa is supported then
 // this returns 2 irrespective of the value of misa[C].

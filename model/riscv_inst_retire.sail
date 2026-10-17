@@ -24,7 +24,6 @@ union ExecutionResult = {
   CHERI_Exception                : (CapCheckType, virtaddr),
 
   // Did not retire for custom reason.
-  Ext_CSR_Check_Failure          : ext_csr_exc_type,
   Ext_DataAddr_Check_Failure     : ext_data_addr_error,
 }
 

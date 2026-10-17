@@ -31,9 +31,6 @@ function handle_cheri_exception(
   set_next_pc(exception_handler(cur_privilege(), CTL_TRAP(t), PC))
 }
 
-val pcc_access_system_regs : unit -> bool
-function pcc_access_system_regs () = canASR(PCC)
-
 /* CHERI fetch address checks */
 
 function cheri_fetch_addr_check(start_addr : xlenbits, addr : xlenbits, auth_cap : Capability, len : CapLenInt) -> Ext_FetchAddr_Check(ext_fetch_addr_error) = {
@@ -94,13 +91,13 @@ function ext_data_get_addr(base_reg : regidx, offset : xlenbits, acc : AccessTyp
   assert(sizeof(max_mem_access) <= cap_max_len);
   let (auth_val, newAddr) = get_cheri_mode_cap_addr(base_reg, offset);
 
-  let (have_rqd_load_perm, have_rqd_store_perm, have_rqd_asr_perm, cause) : (bool, bool, bool, CapCheckType) = match acc {
-    Read(Data)        => (canR(auth_val), true          , true, CapCheckType_Ld()),
-    Write(Data)       => (true          , canW(auth_val), true, CapCheckType_St()),
-    ReadWrite(Data, Data) => (canR(auth_val), canW(auth_val), true, CapCheckType_St()),
-    Cache(CleanFlush) => (canR(auth_val), canW(auth_val), true, CapCheckType_St()),
-    Cache(Inval)      => (canR(auth_val), canW(auth_val), pcc_access_system_regs(), CapCheckType_St()),
-    Cache(Zero)       => (true          , canW(auth_val), true, CapCheckType_St()),
+  let (have_rqd_load_perm, have_rqd_store_perm, cause) : (bool, bool, CapCheckType) = match acc {
+    Read(Data)        => (canR(auth_val), true          , CapCheckType_Ld()),
+    Write(Data)       => (true          , canW(auth_val), CapCheckType_St()),
+    ReadWrite(Data, Data) => (canR(auth_val), canW(auth_val), CapCheckType_St()),
+    Cache(CleanFlush) => (canR(auth_val), canW(auth_val), CapCheckType_St()),
+    Cache(Inval)      => (canR(auth_val), canW(auth_val), CapCheckType_St()),
+    Cache(Zero)       => (true          , canW(auth_val), CapCheckType_St()),
     InstructionFetch() => internal_error(__FILE__, __LINE__, "ext_data_get_addr for Execute"),
     Read(Tagged)      => internal_error(__FILE__, __LINE__, "ext_data_get_addr for Read(Tagged)"),
     Write(Tagged)     => internal_error(__FILE__, __LINE__, "ext_data_get_addr for Write(Tagged)"),
@@ -120,7 +117,6 @@ function ext_data_get_addr(base_reg : regidx, offset : xlenbits, acc : AccessTyp
       not(capIsSealed(auth_val)) &
       have_rqd_load_perm &
       have_rqd_store_perm &
-      have_rqd_asr_perm &
       // For loads/stores we need to check the entire range is valid addresses.
       (validAddrRange(newAddr, width) | capBoundsInfinite(auth_val)) &
       anyByteInCapBounds(auth_val, newAddr, width) &
@@ -143,31 +139,6 @@ function ext_check_phys_mem_write(write_kind, paddr, size, data, metadata) =
 /* Are 'dangerous' operations (XRET, cbo.inval) permitted by extension? */
 function ext_check_system_priv () -> bool = {
   pcc_access_system_regs()
-}
-
-/* Require ASR on any CSR that is not "unprivileged", i.e. accessible from U mode
-  The exception for this is Zstid CSRs which always require ASR on writes and never require
-  ASR on reads */
-function requires_ASR_perm (csrno : bits(12), isWrite : bool) -> bool = {
-  if is_zstid_csr(csrno) then return isWrite;
-  not(check_CSR_priv(csrno, User))
-}
-
-// Types of exception from CSR accesses that ext_check_CSR() can raise
-enum ext_csr_exc_type = {
-  CHERIPermExc,
-  IllegalInstruction,
-}
-
-function ext_check_CSR (csrno : bits(12), p : Privilege, isWrite : bool, op : csrop) -> option(ext_csr_exc_type) =
-  if not(pcc_access_system_regs()) & requires_ASR_perm(csrno, isWrite) then Some(CHERIPermExc)
-  else None()
-
-function ext_check_CSR_fail (fail_type : ext_csr_exc_type) -> unit = {
-  match fail_type {
-    CHERIPermExc => handle_cheri_exception(CapCheckType_Inst(), Virtaddr(zeros())),
-    IllegalInstruction => handle_illegal(zeros()),
-  };
 }
 
 function ext_pma_check (access_type : AccessType(ext_access_type), attributes : PMA) -> bool = {

@@ -44,10 +44,7 @@ function doCSR(csr : csreg, rs1 : regidx, rd : regidx, op : csrop, is_CSR_Write:
   else {
     /* CSRRW should not generate read side-effects if rd == 0 */
     let is_CSR_Read = not(op == CSRRW & rd == zreg);
-    match ext_check_CSR(csr, cur_privilege(), is_CSR_Write, op) {
-      Some(err) => Ext_CSR_Check_Failure(err),
-      None() => handle_csr_op(csr, rs1, rd, is_imm, op, is_CSR_Write, is_CSR_Read),
-    }
+    handle_csr_op(csr, rs1, rd, is_imm, op, is_CSR_Write, is_CSR_Read)
   }
 }
 
