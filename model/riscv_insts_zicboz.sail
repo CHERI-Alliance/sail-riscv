@@ -17,7 +17,7 @@ union clause instruction = ZICBOZ : (regidx)
 
 mapping clause encdec = ZICBOZ(rs1)
   <-> 0b000000000100 @ encdec_reg(rs1) @ 0b010 @ 0b00000 @ 0b0001111
-  when currentlyEnabled(Ext_Zicboz)
+  when currentlyEnabled(Ext_Zicboz) & valid_mem_base_reg(rs1)
 
 mapping clause assembly = ZICBOZ(rs1)
   <-> "cbo.zero" ^ spc() ^ "(" ^ opt_spc() ^ reg_name(rs1) ^ opt_spc() ^ ")"

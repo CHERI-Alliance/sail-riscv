@@ -23,7 +23,7 @@ union clause instruction = LOADRES : (bool, bool, regidx, word_width, regidx)
 
 mapping clause encdec = LOADRES(aq, rl, rs1, size, rd)
   <-> 0b00010 @ bool_bits(aq) @ bool_bits(rl) @ 0b00000 @ encdec_reg(rs1) @ 0b0 @ size_enc(size) @ encdec_reg(rd) @ 0b0101111
-  when currentlyEnabled(Ext_Zalrsc) & lrsc_width_valid(size)
+  when currentlyEnabled(Ext_Zalrsc) & lrsc_width_valid(size) & valid_mem_base_reg(rs1)
 
 /* We could set load-reservations on physical or virtual addresses.
  * However most chips (especially multi-core) will use physical addresses.
@@ -57,7 +57,7 @@ union clause instruction = STORECON : (bool, bool, regidx, regidx, word_width, r
 
 mapping clause encdec = STORECON(aq, rl, rs2, rs1, size, rd)
   <-> 0b00011 @ bool_bits(aq) @ bool_bits(rl) @ encdec_reg(rs2) @ encdec_reg(rs1) @ 0b0 @ size_enc(size) @ encdec_reg(rd) @ 0b0101111
-  when currentlyEnabled(Ext_Zalrsc) & lrsc_width_valid(size)
+  when currentlyEnabled(Ext_Zalrsc) & lrsc_width_valid(size) & valid_mem_base_reg(rs1)
 
 /* NOTE: Currently, we only EA if address translation is successful. This may need revisiting. */
 function clause execute (STORECON(aq, rl, rs2, rs1, width, rd)) = {

@@ -39,7 +39,7 @@ mapping encdec_amoop : amoop <-> bits(5) = {
 
 mapping clause encdec = AMO(op, aq, rl, rs2, rs1, size, rd)
   <-> encdec_amoop(op) @ bool_bits(aq) @ bool_bits(rl) @ encdec_reg(rs2) @ encdec_reg(rs1) @ 0b0 @ size_enc(size) @ encdec_reg(rd) @ 0b0101111
-  when currentlyEnabled(Ext_Zaamo) & amo_width_valid(size)
+  when currentlyEnabled(Ext_Zaamo) & amo_width_valid(size) & valid_mem_base_reg(rs1)
 
 /* NOTE: Currently, we only EA if address translation is successful.
    This may need revisiting. */

@@ -272,7 +272,7 @@ function extend_value(is_unsigned, value) = if is_unsigned then zero_extend(valu
 
 mapping clause encdec = LOAD(imm, rs1, rd, is_unsigned, width)
   <-> imm @ encdec_reg(rs1) @ bool_bits(is_unsigned) @ size_enc(width) @ encdec_reg(rd) @ 0b0000011
-  when valid_load_encdec(width, is_unsigned)
+  when valid_load_encdec(width, is_unsigned) & valid_mem_base_reg(rs1)
 
 function clause execute (LOAD(imm, rs1, rd, is_unsigned, width)) = {
   let offset : xlenbits = sign_extend(imm);
@@ -302,7 +302,7 @@ union clause instruction = STORE : (bits(12), regidx, regidx, word_width)
 
 mapping clause encdec = STORE(imm7 @ imm5, rs2, rs1, width)
   <-> imm7 : bits(7) @ encdec_reg(rs2) @ encdec_reg(rs1) @ 0b0 @ size_enc(width) @ imm5 : bits(5) @ 0b0100011
-  when width <= xlen_bytes
+  when width <= xlen_bytes & valid_mem_base_reg(rs1)
 
 function clause execute (STORE(imm, rs2, rs1, width)) = {
   let offset : xlenbits = sign_extend(imm);

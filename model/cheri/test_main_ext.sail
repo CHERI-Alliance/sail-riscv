@@ -660,19 +660,37 @@ function test_cheri_reserved_load_store() -> unit = {
     let srcR : regidx = Regidx(0b00010);
     // Encode with rs1 = zreg in IntPtrMode where rs1 = zreg is permitted
     PCC = {setCapMode(PCC, IntPtrMode)};
+    let instBitsLW = encdec(LOAD(zeros(), zreg, dstR, false, 4));
+    let instBitsSW = encdec(STORE(zeros(), srcR, zreg, 4));
     let instBitsLY = encdec(LoadCapImm(dstR, zreg, zeros()));
     let instBitsSY = encdec(StoreCapImm(srcR, zreg, zeros()));
-    // Check that CapPtrMode reserves rs1 = zreg for capability loads/stores/AMOs
+    // Check that CapPtrMode reserves rs1 = zreg for loads/stores/AMOs/CBOs
     PCC = {setCapMode(PCC, CapPtrMode)};
+    assert(execute_test(ext_decode(instBitsLW)) == RETIRE_FAIL);
+    assert_illegal_cause();
+    assert(execute_test(ext_decode(instBitsSW)) == RETIRE_FAIL);
+    assert_illegal_cause();
     assert(execute_test(ext_decode(instBitsLY)) == RETIRE_FAIL);
     assert_illegal_cause();
     assert(execute_test(ext_decode(instBitsSY)) == RETIRE_FAIL);
     assert_illegal_cause();
     if currentlyEnabled(Ext_Zalrsc) then {
         PCC = {setCapMode(PCC, IntPtrMode)};
+        let instBitsLRB = encdec(LOADRES(false, false, zreg, 1, dstR));
+        let instBitsSCB = encdec(STORECON(false, false, srcR, zreg, 1, dstR));
+        let instBitsLRW = encdec(LOADRES(false, false, zreg, 4, dstR));
+        let instBitsSCW = encdec(STORECON(false, false, srcR, zreg, 4, dstR));
         let instBitsLRY = encdec(LoadResCap(dstR, zreg, false, false));
         let instBitsSCY = encdec(StoreCondCap(dstR, srcR, zreg, false, false));
         PCC = {setCapMode(PCC, CapPtrMode)};
+        assert(execute_test(ext_decode(instBitsLRB)) == RETIRE_FAIL);
+        assert_illegal_cause();
+        assert(execute_test(ext_decode(instBitsSCB)) == RETIRE_FAIL);
+        assert_illegal_cause();
+        assert(execute_test(ext_decode(instBitsLRW)) == RETIRE_FAIL);
+        assert_illegal_cause();
+        assert(execute_test(ext_decode(instBitsSCW)) == RETIRE_FAIL);
+        assert_illegal_cause();
         assert(execute_test(ext_decode(instBitsLRY)) == RETIRE_FAIL);
         assert_illegal_cause();
         assert(execute_test(ext_decode(instBitsSCY)) == RETIRE_FAIL);
@@ -680,9 +698,26 @@ function test_cheri_reserved_load_store() -> unit = {
     };
     if currentlyEnabled(Ext_Zaamo) then {
         PCC = {setCapMode(PCC, IntPtrMode)};
+        let instBitsAMOADDW = encdec(AMO(AMOADD, false, false, srcR, zreg, 4, dstR));
         let instBitsAMOSWAPY = encdec(AMOSwapCap(dstR, srcR, zreg, false, false));
         PCC = {setCapMode(PCC, CapPtrMode)};
+        assert(execute_test(ext_decode(instBitsAMOADDW)) == RETIRE_FAIL);
+        assert_illegal_cause();
         assert(execute_test(ext_decode(instBitsAMOSWAPY)) == RETIRE_FAIL);
+        assert_illegal_cause();
+    };
+    if currentlyEnabled(Ext_Zicbom) then {
+        PCC = {setCapMode(PCC, IntPtrMode)};
+        let instBitsCBOCLEAN = encdec(ZICBOM(CBO_CLEAN, zreg));
+        PCC = {setCapMode(PCC, CapPtrMode)};
+        assert(execute_test(ext_decode(instBitsCBOCLEAN)) == RETIRE_FAIL);
+        assert_illegal_cause();
+    };
+    if currentlyEnabled(Ext_Zicboz) then {
+        PCC = {setCapMode(PCC, IntPtrMode)};
+        let instBitsCBOZERO = encdec(ZICBOZ(zreg));
+        PCC = {setCapMode(PCC, CapPtrMode)};
+        assert(execute_test(ext_decode(instBitsCBOZERO)) == RETIRE_FAIL);
         assert_illegal_cause();
     };
 }

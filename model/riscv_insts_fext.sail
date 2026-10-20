@@ -284,7 +284,7 @@ union clause instruction = LOAD_FP : (bits(12), regidx, fregidx, word_width)
 
 mapping clause encdec = LOAD_FP(imm, rs1, rd, width)
   <-> imm @ encdec_reg(rs1) @ 0b0 @ size_enc(width) @ encdec_freg(rd) @ 0b000_0111
-  when float_load_store_width_supported(width)
+  when float_load_store_width_supported(width) & valid_mem_base_reg(rs1)
 
 /* Execution semantics ================================ */
 
@@ -319,7 +319,7 @@ union clause instruction = STORE_FP : (bits(12), fregidx, regidx, word_width)
 
 mapping clause encdec = STORE_FP(imm7 @ imm5, rs2, rs1, width)
   <-> imm7 : bits(7) @ encdec_freg(rs2) @ encdec_reg(rs1) @ 0b0 @ size_enc(width) @ imm5 : bits(5) @ 0b010_0111
-  when float_load_store_width_supported(width)
+  when float_load_store_width_supported(width) & valid_mem_base_reg(rs1)
 
 /* Execution semantics ================================ */
 

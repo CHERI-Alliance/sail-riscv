@@ -23,7 +23,7 @@ mapping encdec_cbop : cbop_zicbom <-> bits(12) = {
 
 mapping clause encdec = ZICBOM(cbop, rs1)
   <-> encdec_cbop(cbop) @ encdec_reg(rs1) @ 0b010 @ 0b00000 @ 0b0001111
-  when currentlyEnabled(Ext_Zicbom)
+  when currentlyEnabled(Ext_Zicbom) & valid_mem_base_reg(rs1)
 
 mapping cbop_mnemonic : cbop_zicbom <-> string = {
   CBO_CLEAN <-> "cbo.clean",

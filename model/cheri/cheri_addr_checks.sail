@@ -15,6 +15,10 @@ function effective_cheri_mode() = {
   if cheri_registers_enabled() then getCapMode(PCC) else IntPtrMode
 }
 
+/* Memory access instruction encodings with rs1=x0 are reserved in CapPtrMode. */
+function valid_mem_base_reg(rs1 : regidx) -> bool =
+  rs1 != zreg | effective_cheri_mode() == IntPtrMode
+
 /* Error handlers for address check errors */
 
 function handle_cheri_exception(

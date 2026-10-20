@@ -43,3 +43,5 @@ function ext_check_phys_mem_write(write_kind, paddr, size, data, metadata) =
 
 /* Default implementation of this hook is fully permissive */
 function ext_pma_check (access_type : AccessType(ext_access_type), attributes : PMA) -> bool = true
+
+function valid_mem_base_reg(rs1 : regidx) -> bool = true
