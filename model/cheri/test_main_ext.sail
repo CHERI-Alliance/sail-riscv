@@ -293,6 +293,22 @@ function test_cheri_permission_encoding() -> unit = {
     let all_perms_but_x = {getArchPermsLegalized(intmode_inf) with X=false};
     let cap_x_cleared = setArchPerms(intmode_inf, all_perms_but_x);
     assert(getCapMode(cap_x_cleared) == CapPtrMode);
+
+    // YPERMC on a sealed capability preserves the tag when only clearing GL
+    // (or when no AP/SDP bits change), and clears the tag when AP or SDP changes.
+    let sealed_root = sealCap(root_cap);
+    Y(capR) = sealed_root;
+    assert(execute(YPERMC(dstR, capR, zreg)) == RETIRE_SUCCESS);
+    assert(Y(dstR) == sealed_root);
+    X(modeR) = [Mk_BitPerms(zeros()) with GL = 0b1].bits;
+    assert(execute(YPERMC(dstR, capR, modeR)) == RETIRE_SUCCESS);
+    assert(Y(dstR) == {sealed_root with gl = 0b0});
+    X(modeR) = [Mk_BitPerms(zeros()) with W = 0b1].bits;
+    assert(execute(YPERMC(dstR, capR, modeR)) == RETIRE_SUCCESS);
+    assert(not(Y(dstR).tag));
+    X(modeR) = [Mk_BitPerms(zeros()) with SDP = ones()].bits;
+    assert(execute(YPERMC(dstR, capR, modeR)) == RETIRE_SUCCESS);
+    assert(not(Y(dstR).tag));
 }
 
 function test_cheri_circular() -> unit = {

@@ -281,17 +281,18 @@ function clause execute(YPERMC(rd, rs1, rs2)) = {
   let rs1_cap = Y(rs1);
   let rs2_val = X(rs2);
 
-  let cond = capIsSealed(rs1_cap) | capIsMalformed(rs1_cap);
-  let inCap = clearTagIf(rs1_cap, cond);
-
-  let old_perms = packPerms(getArchPermsLegalized(inCap), inCap.gl, inCap.sd_perms).bits;
+  let old_perms = packPerms(getArchPermsLegalized(rs1_cap), rs1_cap.gl, rs1_cap.sd_perms).bits;
 
   let new_perms = old_perms & ~(rs2_val);
 
   let (new_arch_perms, new_gl, new_sd_perms) = unpackPerms(struct {bits = new_perms});
-  let newCap = { setArchPerms(inCap, new_arch_perms) with gl = new_gl, sd_perms = new_sd_perms };
+  let newCap = { setArchPerms(rs1_cap, new_arch_perms) with gl = new_gl, sd_perms = new_sd_perms };
 
-  Y(rd) = newCap;
+  // YPERMC only clears the tag on a sealed capability if AP or SDP bits are modified;
+  // clearing GL (or masking with zero / already-clear bits) preserves the tag.
+  let perms_modified = (newCap.ap_p != rs1_cap.ap_p) | (newCap.sd_perms != rs1_cap.sd_perms);
+  let clear_tag = (capIsSealed(rs1_cap) & perms_modified) | capIsMalformed(rs1_cap);
+  Y(rd) = clearTagIf(newCap, clear_tag);
   RETIRE_SUCCESS
 }
 
