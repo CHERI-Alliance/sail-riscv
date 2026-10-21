@@ -34,7 +34,25 @@ function test_cheri_fault() -> unit = {
     assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(CapCheckType_Ld()))));
     assert(execute_test(StoreCapImm(zreg, zreg, zeros())) == RETIRE_FAIL); // Throw tag exception
     assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(CapCheckType_St()))));
-    // TODO test PTE exceptions
+    if xlen == 64 then {
+        let saved_mstatus = mstatus;
+        mstatus[YRGE] = 0b1;
+        mstatus[SYRG] = 0b1;
+        let rw_pte = Mk_PTE_Flags(0b1100_0111); // D=1, A=1, U=0, X=0, W=1, R=1, V=1
+        let amo_tagged = ReadWrite(Tagged, Tagged);
+
+        // YR=0, YRG=0, YW=1, YD=1 clears loaded tags on AMOSWAP.Y with a tagged source
+        let ext_clear = Some([Mk_PTE_Ext(zeros()) with rvy = 0b1100]);
+        let (ok, ptw) = pte_permission_ok(amo_tagged, Supervisor, false, false, rw_pte, ext_clear, init_ext_ptw);
+        assert(ok & ptw.tagged_load_behaviour == TaggedLoadClear);
+
+        // YR=1, YRG=0 (!= SYRG), YW=1, YD=1 raises CheriPage_Ld on AMOSWAP.Y
+        let ext_ld_fault = Some([Mk_PTE_Ext(zeros()) with rvy = 0b1101]);
+        let (ok, ptw) = pte_permission_ok(amo_tagged, Supervisor, false, false, rw_pte, ext_ld_fault, init_ext_ptw);
+        assert(not(ok) & ptw.cheri_page_fault == Some(CheriPage_Ld));
+
+        mstatus = saved_mstatus;
+    };
 }
 
 function assert_illegal_cause() -> unit = {

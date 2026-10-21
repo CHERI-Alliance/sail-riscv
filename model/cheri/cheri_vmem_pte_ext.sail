@@ -26,17 +26,17 @@ function pte_permission_ok(
     Some(ext) => {
       if mstatus[YRGE] == 0b0 then {
         let pte_rvy = Mk_PTE_RVY(ext[rvy]);
-        if isTaggedWrite(ac) then {
-          if pte_rvy[Y] == 0b0 then cheri_page_fault = Some(CheriPage_St)
-        } else if isTaggedRead(ac) then {
-          if pte_rvy[Y] == 0b0 then tagged_load_behaviour = TaggedLoadClear
+        if pte_rvy[Y] == 0b0 then {
+          if isTaggedWrite(ac) then cheri_page_fault = Some(CheriPage_St);
+          if isTaggedRead(ac) then tagged_load_behaviour = TaggedLoadClear;
         }
       } else {
         let pte_rvy = Mk_PTE_RVY_SVYRG(ext[rvy]);
         if isTaggedWrite(ac) then {
           if pte_rvy[YW] == 0b0 then cheri_page_fault = Some(CheriPage_St)
           // YD checks carried out in "update_pte"
-        } else if isTaggedRead(ac) then {
+        };
+        if isTaggedRead(ac) then {
           match (pte_rvy[YR], pte_rvy[YRG]) {
             (0b0, 0b0) => tagged_load_behaviour = TaggedLoadClear,
             (0b0, 0b1) => (),
@@ -45,7 +45,8 @@ function pte_permission_ok(
               if YRG != xYRG then {
                 if sys_cheri_pte_crg_exception_check_tag() then {
                   tagged_load_behaviour = TaggedLoadTrap;
-                } else {
+                } else if cheri_page_fault == None() then {
+                  // For AMOSWAP.Y, CheriPage_St takes priority over CheriPage_Ld.
                   cheri_page_fault = Some(CheriPage_Ld);
                 }
               }
