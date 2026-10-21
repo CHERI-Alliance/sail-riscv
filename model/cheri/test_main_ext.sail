@@ -39,6 +39,8 @@ function test_cheri_fault() -> unit = {
         mstatus[YRGE] = 0b1;
         mstatus[SYRG] = 0b1;
         let rw_pte = Mk_PTE_Flags(0b1100_0111); // D=1, A=1, U=0, X=0, W=1, R=1, V=1
+        let ro_pte = Mk_PTE_Flags(0b1100_0011); // D=1, A=1, U=0, X=0, W=0, R=1, V=1
+        let u_pte = Mk_PTE_Flags(0b1101_0111); // D=1, A=1, U=1, X=0, W=1, R=1, V=1
         let amo_tagged = ReadWrite(Tagged, Tagged);
 
         // YR=0, YRG=0, YW=1, YD=1 clears loaded tags on AMOSWAP.Y with a tagged source
@@ -50,6 +52,19 @@ function test_cheri_fault() -> unit = {
         let ext_ld_fault = Some([Mk_PTE_Ext(zeros()) with rvy = 0b1101]);
         let (ok, ptw) = pte_permission_ok(amo_tagged, Supervisor, false, false, rw_pte, ext_ld_fault, init_ext_ptw);
         assert(not(ok) & ptw.cheri_page_fault == Some(CheriPage_Ld));
+
+        // Step 6 (U=1 with SUM=0) outranks Step 7 (CheriPage_St when YW=0)
+        let ext_both_fault = Some([Mk_PTE_Ext(zeros()) with rvy = 0b0001]);
+        let (ok, ptw) = pte_permission_ok(amo_tagged, Supervisor, false, false, u_pte, ext_both_fault, init_ext_ptw);
+        assert(not(ok) & ptw.cheri_page_fault == None());
+        let (ok, ptw) = pte_permission_ok(amo_tagged, Supervisor, false, true, u_pte, ext_both_fault, init_ext_ptw);
+        assert(not(ok) & ptw.cheri_page_fault == Some(CheriPage_St));
+
+        // Standard page fault (W=0) and CheriPage_St (YW=0) outrank CheriPage_Ld
+        let (ok, ptw) = pte_permission_ok(amo_tagged, Supervisor, false, false, ro_pte, ext_ld_fault, init_ext_ptw);
+        assert(not(ok) & ptw.cheri_page_fault == None());
+        let (ok, ptw) = pte_permission_ok(amo_tagged, Supervisor, false, false, rw_pte, ext_both_fault, init_ext_ptw);
+        assert(not(ok) & ptw.cheri_page_fault == Some(CheriPage_St));
 
         mstatus = saved_mstatus;
     };

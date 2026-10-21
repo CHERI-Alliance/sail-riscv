@@ -17,6 +17,15 @@ function pte_permission_ok(
 ) -> (bool, ext_ptw) = {
   let non_cheri_page_ok = pte_rwxu_permission_ok(ac, priv, mxr, do_sum, pte)
                         & (plat_enable_dirty_update | ((pte[A] == 0b1) & (pte[D] == 0b1 | not(isWriteAc(ac))))) ;
+  // Step 6 of VATP checks pte.u before Step 7 checks pte.rvy for capability stores.
+  // TODO: use priv_ok from check_PTE_permission() after merging upstream
+  // (riscv/sail-riscv#1224).
+  let pte_u_ok : bool = match (ac, priv) {
+    (_, User)                        => pte[U] == 0b1,
+    (InstructionFetch(), Supervisor) => pte[U] == 0b0,
+    (_, Supervisor)                  => (pte[U] == 0b0) | do_sum,
+    (_, Machine)                     => internal_error(__FILE__, __LINE__, "m-mode mem perm check"),
+  };
 
   var cheri_page_fault : option(CheriPageAccess) = None();
   var tagged_load_behaviour = TaggedLoadOk;
@@ -27,12 +36,12 @@ function pte_permission_ok(
       if mstatus[YRGE] == 0b0 then {
         let pte_rvy = Mk_PTE_RVY(ext[rvy]);
         if pte_rvy[Y] == 0b0 then {
-          if isTaggedWrite(ac) then cheri_page_fault = Some(CheriPage_St);
+          if pte_u_ok & isTaggedWrite(ac) then cheri_page_fault = Some(CheriPage_St);
           if isTaggedRead(ac) then tagged_load_behaviour = TaggedLoadClear;
         }
       } else {
         let pte_rvy = Mk_PTE_RVY_SVYRG(ext[rvy]);
-        if isTaggedWrite(ac) then {
+        if pte_u_ok & isTaggedWrite(ac) then {
           if pte_rvy[YW] == 0b0 then cheri_page_fault = Some(CheriPage_St)
           // YD checks carried out in "update_pte"
         };
@@ -45,9 +54,13 @@ function pte_permission_ok(
               if YRG != xYRG then {
                 if sys_cheri_pte_crg_exception_check_tag() then {
                   tagged_load_behaviour = TaggedLoadTrap;
-                } else if cheri_page_fault == None() then {
-                  // For AMOSWAP.Y, CheriPage_St takes priority over CheriPage_Ld.
-                  cheri_page_fault = Some(CheriPage_Ld);
+                } else {
+                  // CHERI Load Capability Fault has lowest priority, below
+                  // standard page faults and CHERI Store/AMO Page Fault (for AMOSWAP.Y).
+                  let yd_fault = isTaggedWrite(ac) & pte_rvy[YD] == 0b0 & not(plat_enable_dirty_update);
+                  if non_cheri_page_ok & cheri_page_fault == None() & not(yd_fault) then {
+                    cheri_page_fault = Some(CheriPage_Ld);
+                  }
                 }
               }
             }
