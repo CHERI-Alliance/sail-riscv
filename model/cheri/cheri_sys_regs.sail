@@ -48,7 +48,7 @@ function cheri_registers_enabled () -> bool = {
   // Y is always 1 in debug mode
   if debug_mode_active then return true;
   // Y logic described in CHERI spec
-  misa[Y] == 0b1
+  currentlyEnabled(Ext_Y)
     & feature_enabled_for_priv(cur_privilege(), menvcfg[Y][0], senvcfg[Y][0])
 }
 
