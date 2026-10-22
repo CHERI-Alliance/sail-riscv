@@ -578,13 +578,12 @@ function legalizeLoadedArchPerms(loaded_cap : Capability, auth_cap : Capability)
 }
 
 function restrictLoadedGL(loaded_cap : Capability, auth_cap : Capability) -> Capability = {
-  // Any unsealed capability with its tag set to 1 that is loaded from memory has
-  // ... its Capability Level (GL) restricted to the
-  // authorizing capability’s Capability Level (GL) if the authorizing capability
-  // does not grant EL-permission. If sealed, then only GL is modified ...
+  // Any capability with its tag set to 1 that is loaded from memory has its
+  // Global (GL) flag cleared if the authorizing capability does not grant
+  // LG-permission (EL). If sealed, then only GL is modified.
 
   let restrictGL = loaded_cap.tag & not(canEL(auth_cap));
-  if restrictGL then {loaded_cap with gl = auth_cap.gl & loaded_cap.gl} else loaded_cap
+  if restrictGL then {loaded_cap with gl = zeros()} else loaded_cap
 }
 
 function legalizeSL(stored_cap : Capability, auth_cap : Capability) -> Capability = {
