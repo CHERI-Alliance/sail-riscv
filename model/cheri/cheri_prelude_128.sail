@@ -71,9 +71,9 @@ bitfield EncMetadata_64 : bits(64) = {
 mapping ap_p_encdec_64 : bits(cap_AP_P_width_64) <-> (ArchPerms, PointerMode) = {
   bool_bits(SL) @ bool_bits(LG) @ bool_bits(LM) @ bool_bits(ASR) @
   bool_bits(X) @ bool_bits(R) @ bool_bits(W) @ bool_bits(C) @ pointer_mode_encdec(P)
-    if (not(ASR) | X) & (not(C) | (R | W)) & (P == pointer_mode_encdec(0b0) | X) & (not(SL) | C) & (not(LG | LM) | (C & R)) <->
+    if (not(ASR) | X) & (not(C) | (R | W)) & (P == pointer_mode_encdec(0b0) | X) & (not(SL) | (C & W)) & (not(LG | LM) | (C & R)) <->
   (struct{R, W, C, X, LM, SL, LG, ASR}, P)
-    if (not(ASR) | X) & (not(C) | (R | W)) & (P == pointer_mode_encdec(0b0) | X) & (not(SL) | C) & (not(LG | LM) | (C & R)),
+    if (not(ASR) | X) & (not(C) | (R | W)) & (P == pointer_mode_encdec(0b0) | X) & (not(SL) | (C & W)) & (not(LG | LM) | (C & R)),
 }
 
 // Ideally ap_p_encdec(({null,root}_perms, IntPtrMode)), but spurious incomplete match side-effect at toplevel
@@ -82,12 +82,12 @@ let root_ap_p_64 = 0b111111111
 
 // Perform the XLEN-specific YPERMC legalization.
 function legalizePermsAndMode_64(perms : ArchPerms, mode : PointerMode) -> (ArchPerms, PointerMode) = {
-  let perms = if perms.R | perms.W then perms else {perms with C=false};
-  let perms = if perms.C & perms.R then perms else {perms with LG=false};
-  let perms = if perms.C & perms.R then perms else {perms with LM=false};
-  let perms = if perms.C then perms else {perms with SL=false};
-  let perms = if perms.X then perms else {perms with ASR=false};
-  let mode  = if perms.X then mode else pointer_mode_encdec(0b0);
+  let perms = if perms.R | perms.W then perms else {perms with C=false}; // base-1
+  let perms = if perms.C & perms.R then perms else {perms with LG=false}; // Zylg-1
+  let perms = if perms.C & perms.R then perms else {perms with LM=false}; // base-2
+  let perms = if perms.C & perms.W then perms else {perms with SL=false}; // Zylg-2
+  let perms = if perms.X then perms else {perms with ASR=false}; // base-3
+  let mode  = if perms.X then mode else pointer_mode_encdec(0b0); // Zyhybrid-1
   (perms, mode)
 }
 
