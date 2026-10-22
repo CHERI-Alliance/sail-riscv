@@ -218,6 +218,7 @@ foreach (variant IN ITEMS "" "smt" "rocq" "rmem" "lean" "lem" "isabelle")
         "riscv_fetch_rvfi.sail"
         "riscv_fetch.sail"
         "riscv_step.sail"
+        "cheri/test_pte_ext.sail"
         "cheri/test_main_ext.sail"
         "test_main.sail"
     )
