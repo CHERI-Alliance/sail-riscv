@@ -342,6 +342,17 @@ function test_cheri_permission_encoding() -> unit = {
     X(modeR) = [Mk_BitPerms(zeros()) with SDP = ones()].bits;
     assert(execute(YPERMC(dstR, capR, modeR)) == RETIRE_SUCCESS);
     assert(not(Y(dstR).tag));
+
+    // Loading without LG (EL) clears GL (and EL if unsealed), even when the
+    // authority is global.
+    let data_rw = setArchPerms(root_cap, {getArchPermsLegalized(root_cap) with X=false, ASR=false});
+    let auth_no_el = setArchPerms(data_rw, {getArchPermsLegalized(data_rw) with EL=false});
+    assert(auth_no_el.gl == 0b1);
+    let loaded_no_el = legalizeLoadedPermissions(data_rw, auth_no_el);
+    assert(loaded_no_el.gl == 0b0);
+    assert(not(getArchPermsLegalized(loaded_no_el).EL));
+    let loaded_sealed_no_el = legalizeLoadedPermissions(sealed_root, auth_no_el);
+    assert(loaded_sealed_no_el == {sealed_root with gl = 0b0});
 }
 
 function test_cheri_circular() -> unit = {
