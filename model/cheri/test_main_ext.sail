@@ -276,7 +276,7 @@ function test_cheri_permission_encoding() -> unit = {
     let dstR : regidx = Regidx(0b00011);
     if cap_size == 16 then {
         // Malformed permission combination, but it can be encoded (though is reserved) on RV64.
-        // P=1 (IntPtrMode), LM=0, SL=0, EL=0 ASR=1, X=0, R=1, W=1, C=0
+        // P=1 (IntPtrMode), LM=0, SL=0, LG=0 ASR=1, X=0, R=1, W=1, C=0
         let invalid = {null_cap with ap_p = 0b000101101};
         // We shouldn't be able to change the mode to CapPtrMode because X=0
         // so this should have no effect.
@@ -764,6 +764,7 @@ function test_cheri_mcre(cheri_allowed : bool) -> unit = {
 }
 
 function test_cheri_enables() -> unit = {
+    PCC = root_cap;
     misa[Y] = 0b1;
     test_cheri_pcc_mode(Machine, true);
     test_cheri_mcre(true);
@@ -855,6 +856,24 @@ function test_cheri_bad_jump() -> unit = {
     PC = zeros();
 }
 
+function test_cheri_global() -> unit = {
+    let data_cap = root_cap;
+    let (root_perms, _) = ap_p_decode(root_ap_p);
+    let no_lg_perms = {root_perms with LG=false};
+    let auth_cap = setArchPerms({root_cap with address=zeros()@0x80000000}, no_lg_perms);
+
+    let data_reg = Regidx(0b00001);
+    let auth_reg = Regidx(0b00010);
+
+    PCC = {setCapMode(PCC, CapPtrMode)};
+    Y(data_reg) = data_cap;
+    Y(auth_reg) = auth_cap;
+
+    assert(execute(StoreCapImm(data_reg, auth_reg, zeros())) == RETIRE_SUCCESS);
+    assert(execute(LoadCapImm(data_reg, auth_reg, zeros())) == RETIRE_SUCCESS);
+    assert(Y(data_reg) == setArchPerms({data_cap with gl=0b0}, no_lg_perms));
+}
+
 function test_main_ext() -> unit = {
     // Check reset state of misa.Y and xenvcfg.Y
     assert(misa[Y] == 0b1);
@@ -886,6 +905,7 @@ function test_main_ext() -> unit = {
     test_cheri_malformed();
     test_cheri_invalid_addr();
     test_cheri_bad_jump();
+    test_cheri_global();
     test_pte_ext();
     test_cheri_enables();
     print("CHERI tests passed\n");
