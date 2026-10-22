@@ -44,6 +44,13 @@ function test_cheri_pte_checks_yrge() -> unit = {
     // Construct inputs that should trigger a load capability fault, i.e. emulate being in the middle of a revocation sweep
     let revokingYRGExtPTE = [maxExtPTE with rvy = [maxSYRG with YRG=0b0].bits];
     let revokingUserPTEs = {allAllowedUserPTEs with ext = Some(revokingYRGExtPTE)};
+    let noYWExtPTE = [maxExtPTE with rvy = [maxSYRG with YW=0b0].bits];
+    let bothFaultExtPTE = [maxExtPTE with rvy = [maxSYRG with YW=0b0, YRG=0b0].bits];
+    let ext_ptw_cheri_st = {init_ext_ptw with cheri_page_fault = Some(CheriPage_St)};
+
+    // Step 6 (U=1 with SUM=0) outranks Step 7 (CheriPage_St when YW=0)
+    check_pte_access({allAllowedUserPTEs with priv = Supervisor, do_sum = false, ext = Some(noYWExtPTE)}, Write(Tagged), false, init_ext_ptw, "S-mode U=1 SUM=0 outranks CheriPage_St");
+    check_pte_access({allAllowedUserPTEs with priv = Supervisor, do_sum = true, ext = Some(noYWExtPTE)}, Write(Tagged), false, ext_ptw_cheri_st, "S-mode U=1 SUM=1 raises CheriPage_St");
 
     // Integer reads succeed
     check_pte_access_success(revokingUserPTEs, Read(Data), "revoking int read");
@@ -60,6 +67,9 @@ function test_cheri_pte_checks_yrge() -> unit = {
       check_pte_access(revokingUserPTEs, Read(Tagged), false, ext_ptw_cheri_ld, "revoking cap read (conservative)");
       // Capability atomics fail
       check_pte_access(revokingUserPTEs, ReadWrite(Tagged, Tagged), false, ext_ptw_cheri_ld, "revoking cap amo (conservative)");
+      // Standard page fault (W=0) and CheriPage_St (YW=0) outrank CheriPage_Ld
+      check_pte_access({revokingUserPTEs with pte = [maxPTE with W = 0b0]}, ReadWrite(Tagged, Tagged), false, init_ext_ptw, "W=0 outranks CheriPage_Ld on cap amo");
+      check_pte_access({revokingUserPTEs with ext = Some(bothFaultExtPTE)}, ReadWrite(Tagged, Tagged), false, ext_ptw_cheri_st, "CheriPage_St outranks CheriPage_Ld on cap amo");
     }
 }
 
