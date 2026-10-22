@@ -26,17 +26,21 @@ function pte_permission_ok(
     Some(ext) => {
       if mstatus[YRGE] == 0b0 then {
         let pte_rvy = Mk_PTE_RVY(ext[rvy]);
+        // Note the Write and Read checks are not mutually exclusive for atomics
         if isTaggedWrite(ac) then {
           if pte_rvy[Y] == 0b0 then cheri_page_fault = Some(CheriPage_St)
-        } else if isTaggedRead(ac) then {
+        };
+        if isTaggedRead(ac) then {
           if pte_rvy[Y] == 0b0 then tagged_load_behaviour = TaggedLoadClear
         }
       } else {
         let pte_rvy = Mk_PTE_RVY_SVYRG(ext[rvy]);
+        // Note the Write and Read checks are not mutually exclusive for atomics.
         if isTaggedWrite(ac) then {
           if pte_rvy[YW] == 0b0 then cheri_page_fault = Some(CheriPage_St)
           // YD checks carried out in "update_pte"
-        } else if isTaggedRead(ac) then {
+        };
+        if isTaggedRead(ac) then {
           match (pte_rvy[YR], pte_rvy[YRG]) {
             (0b0, 0b0) => tagged_load_behaviour = TaggedLoadClear,
             (0b0, 0b1) => (),
