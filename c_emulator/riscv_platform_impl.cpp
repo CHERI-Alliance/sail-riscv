@@ -2,8 +2,6 @@
 #include <unistd.h>
 #include <stdio.h>
 
-bool rv_enable_rvy = true;
-
 // Provides entropy for the scalar cryptography extension.
 uint64_t rv_16_random_bits(void)
 {
