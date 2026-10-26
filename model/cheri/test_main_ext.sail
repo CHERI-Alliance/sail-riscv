@@ -886,6 +886,7 @@ function test_main_ext() -> unit = {
     test_cheri_malformed();
     test_cheri_invalid_addr();
     test_cheri_bad_jump();
+    test_pte_ext();
     test_cheri_enables();
     print("CHERI tests passed\n");
 }
