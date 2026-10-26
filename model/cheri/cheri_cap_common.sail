@@ -458,6 +458,12 @@ function unpackPerms(perms : BitPerms) -> (ArchPerms, bits(lvlbits), bits(cap_sd
   (arch_perms, perms[GL], perms[SDP])
 }
 
+function getCapPermsLegalized(cap : Capability) -> BitPerms =
+  if capIsMalformed(cap) then
+    packPerms(null_perms, zeros(), zeros())
+  else
+    packPerms(getArchPermsLegalized(cap), cap.gl, cap.sd_perms)
+
 function getCapLength(c : Capability) -> CapLenInt =
   match getCapBounds(c) {
     None() => 0,
