@@ -622,31 +622,31 @@ function test_cheri_invalid_addr() -> unit = {
     assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(CapCheckType_Ld()))));
 }
 
+function test_csr_exists(regname : string, should_exist : bool) -> unit = {
+    let backupPCC = PCC;
+    let backupPriv = cur_privilege();
+    let resR = Regidx(0b00001);
+    let zeroR = Regidx(0b00000);
+    assert(execute_test(CSRReg(csr_name_map(regname), zeroR, resR, CSRRS)) == (if should_exist then RETIRE_SUCCESS else RETIRE_FAIL));
+    if not(should_exist) then assert_illegal_cause();
+    // Restore things, as above might have trapped!
+    PCC = backupPCC;
+    set_cur_privilege(backupPriv);
+}
+
 function test_cheri_feature_enables(priv : Privilege, cheri_allowed : bool, expected_mode : PointerMode) -> unit = {
     set_cur_privilege(priv);
-    let backupPCC = PCC;
     assert(effective_cheri_mode() == expected_mode);
-    let ddcAddr = csr_name_map("ddc");
-    let tidAddr : csreg = match priv {
-      Machine => csr_name_map("mtidc"),
-      Supervisor => csr_name_map("stidc"),
-      User => csr_name_map("utidc"),
-    };
     let resR : regidx = Regidx(0b00001);
     // Capmode has expected tag-preserving behaviour
     let auipcEnc = encdec(UTYPE(0x00000, resR, AUIPC));
     assert(execute(ext_decode(auipcEnc)) == RETIRE_SUCCESS);
     assert(Y(resR).tag == (expected_mode == CapPtrMode));
     // Can access YLEN-width CSRs iff not prevented by some cre
-    assert(execute_test(CSRReg(ddcAddr, resR, resR, CSRRW)) == (if cheri_allowed then RETIRE_SUCCESS else RETIRE_FAIL));
-    if not(cheri_allowed) then assert_illegal_cause();
-    // Restore things, as above might have trapped!
-    PCC = backupPCC;
-    set_cur_privilege(priv);
-    assert(execute_test(CSRReg(tidAddr, resR, resR, CSRRW)) == (if cheri_allowed then RETIRE_SUCCESS else RETIRE_FAIL));
-    // Restore things, as above might have trapped!
-    PCC = backupPCC;
-    set_cur_privilege(priv);
+    test_csr_exists("ddc", cheri_allowed);
+    test_csr_exists("mtidc", cheri_allowed & priv == Machine);
+    test_csr_exists("stidc", cheri_allowed & (priv == Machine | priv == Supervisor));
+    test_csr_exists("utidc", cheri_allowed);
     // CHERI-only mode-independent instructions are allowed iff not prevented by some cre
     let resR = regidx_bits(resR);
     let instEnc = 0b1111010 @ 0b00001 @ resR @ 0b000 @ resR @ 0b1111011; // ypermr manually encoded as encdec depends on mode!
