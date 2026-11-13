@@ -747,6 +747,7 @@ function test_cheri_reserved_load_store() -> unit = {
 
 function test_cheri_scre(cheri_allowed : bool) -> unit = {
     set_senvcfg(update_Y(senvcfg, 0b1).bits);
+    assert(senvcfg[Y] == bool_to_bits(misa[Y] == 0b1));
     test_cheri_pcc_mode(User, cheri_allowed);
     set_senvcfg(update_Y(senvcfg, 0b0).bits);
     test_cheri_pcc_mode(User, false);
@@ -754,6 +755,7 @@ function test_cheri_scre(cheri_allowed : bool) -> unit = {
 
 function test_cheri_mcre(cheri_allowed : bool) -> unit = {
     set_menvcfg(update_Y(menvcfg, 0b1).bits);
+    assert(menvcfg[Y] == bool_to_bits(misa[Y] == 0b1));
     test_cheri_pcc_mode(Supervisor, cheri_allowed);
     test_cheri_scre(cheri_allowed);
     set_menvcfg(update_Y(menvcfg, 0b0).bits);
@@ -765,7 +767,13 @@ function test_cheri_enables() -> unit = {
     misa[Y] = 0b1;
     test_cheri_pcc_mode(Machine, true);
     test_cheri_mcre(true);
+    set_menvcfg(update_Y(menvcfg, 0b1).bits);
+    set_senvcfg(update_Y(senvcfg, 0b1).bits);
     misa[Y] = 0b0;
+    assert(Mk_MEnvcfg(zero_extend(read_CSR(0x30A)))[Y] == 0b0);
+    assert(Mk_SEnvcfg(read_CSR(0x10A))[Y] == 0b0);
+    set_menvcfg(update_Y(menvcfg, 0b0).bits);
+    set_senvcfg(update_Y(senvcfg, 0b0).bits);
     test_cheri_pcc_mode(Machine, false);
     test_cheri_mcre(false);
 }
