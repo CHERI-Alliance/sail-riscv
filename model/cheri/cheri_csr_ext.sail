@@ -10,8 +10,8 @@ function clause is_CSR_defined(0x416) = cheri_registers_enabled() // ddc
 // (is_CSR_accessible(csr, p, isWrite)) is merged, check
 // `not(isWrite) | pcc_access_system_regs()` here for mtid/stid/utid.
 function clause is_CSR_defined(0x780) = cheri_registers_enabled() // mtidc
-function clause is_CSR_defined(0x580) = cheri_registers_enabled() // stidc
-function clause is_CSR_defined(0x480) = cheri_registers_enabled() // utidc
+function clause is_CSR_defined(0x580) = cheri_registers_enabled() & currentlyEnabled(Ext_S) // stidc
+function clause is_CSR_defined(0x480) = cheri_registers_enabled() & currentlyEnabled(Ext_U) // utidc
 function clause is_CSR_defined(0x7bc) = cheri_registers_enabled() & debug_mode_active // dddc
 function clause is_CSR_defined(0x7bd) = cheri_registers_enabled() & debug_mode_active // drootc
 
