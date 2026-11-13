@@ -309,6 +309,20 @@ function test_cheri_permission_encoding() -> unit = {
     X(modeR) = [Mk_BitPerms(zeros()) with SDP = ones()].bits;
     assert(execute(YPERMC(dstR, capR, modeR)) == RETIRE_SUCCESS);
     assert(not(Y(dstR).tag));
+
+    // SL requires C and W (Zylg-2 / RV32-l1-3): clearing W clears SL, including
+    // when loading without LM clears W and LM.
+    Y(capR) = root_cap;
+    X(modeR) = [Mk_BitPerms(zeros()) with W = 0b1].bits;
+    assert(execute(YPERMC(dstR, capR, modeR)) == RETIRE_SUCCESS);
+    assert(not(getArchPermsLegalized(Y(dstR)).W));
+    assert(not(getArchPermsLegalized(Y(dstR)).SL));
+    let data_rw = setArchPerms(root_cap, {getArchPermsLegalized(root_cap) with X=false, ASR=false});
+    let auth_no_lm = setArchPerms(data_rw, {getArchPermsLegalized(data_rw) with LM=false});
+    let loaded_no_lm = legalizeLoadedPermissions(data_rw, auth_no_lm);
+    assert(not(getArchPermsLegalized(loaded_no_lm).W));
+    assert(not(getArchPermsLegalized(loaded_no_lm).LM));
+    assert(not(getArchPermsLegalized(loaded_no_lm).SL));
 }
 
 function test_cheri_circular() -> unit = {
