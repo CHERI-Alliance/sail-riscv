@@ -214,7 +214,7 @@ mach_bits sys_hpmevent_writable_bits(unit u)
 
 mach_bits sys_medeleg_writable_bits(unit u)
 {
-  return 0xFFFFFFFF;
+  return UINT64_MAX;
 }
 
 mach_bits sys_mideleg_writable_bits(unit u)
