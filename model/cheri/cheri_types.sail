@@ -62,8 +62,8 @@ struct ArchPerms = {
   X : bool,
   LM : bool,
   SL : bool,
-  EL : bool,
+  LG : bool,
   ASR : bool
 }
 
-let null_perms : ArchPerms = struct { R=false, W=false, C=false, X=false, LM=false, SL=false, EL=false, ASR=false }
+let null_perms : ArchPerms = struct { R=false, W=false, C=false, X=false, LM=false, SL=false, LG=false, ASR=false }

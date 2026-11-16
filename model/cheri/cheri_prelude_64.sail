@@ -74,23 +74,23 @@ type CapAP_P_32 = bits(5)
 // prevented by calling legalizeFields when changing the fields.
 mapping ap_p_encdec_32 : bits(cap_AP_P_width_32) <-> (ArchPerms, PointerMode) = {
   // Quadrant 0: Non-capability data read/write
-  0b00 @ 0b000     <-> (struct{ R=false, W=false, C=false, LM=false, EL=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
-  0b00 @ 0b001     <-> (struct{ R= true, W=false, C=false, LM=false, EL=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
-  0b00 @ 0b100     <-> (struct{ R=false, W= true, C=false, LM=false, EL=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
-  0b00 @ 0b101     <-> (struct{ R= true, W= true, C=false, LM=false, EL=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b00 @ 0b000     <-> (struct{ R=false, W=false, C=false, LM=false, LG=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b00 @ 0b001     <-> (struct{ R= true, W=false, C=false, LM=false, LG=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b00 @ 0b100     <-> (struct{ R=false, W= true, C=false, LM=false, LG=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b00 @ 0b101     <-> (struct{ R= true, W= true, C=false, LM=false, LG=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
   // Quadrant 1: Executable capabilities
-  0b01 @ 0b00 @ p  <-> (struct{ R= true, W= true, C= true, LM= true, EL= true, SL= true, X= true, ASR= true }, pointer_mode_encdec(p)),
-  0b01 @ 0b01 @ p  <-> (struct{ R= true, W=false, C= true, LM= true, EL= true, SL= true, X= true, ASR=false }, pointer_mode_encdec(p)),
-  0b01 @ 0b10 @ p  <-> (struct{ R= true, W= true, C= true, LM= true, EL= true, SL= true, X= true, ASR=false }, pointer_mode_encdec(p)),
-  0b01 @ 0b11 @ p  <-> (struct{ R= true, W= true, C=false, LM=false, EL=false, SL=false, X= true, ASR=false }, pointer_mode_encdec(p)),
+  0b01 @ 0b00 @ p  <-> (struct{ R= true, W= true, C= true, LM= true, LG= true, SL= true, X= true, ASR= true }, pointer_mode_encdec(p)),
+  0b01 @ 0b01 @ p  <-> (struct{ R= true, W=false, C= true, LM= true, LG= true, SL= true, X= true, ASR=false }, pointer_mode_encdec(p)),
+  0b01 @ 0b10 @ p  <-> (struct{ R= true, W= true, C= true, LM= true, LG= true, SL= true, X= true, ASR=false }, pointer_mode_encdec(p)),
+  0b01 @ 0b11 @ p  <-> (struct{ R= true, W= true, C=false, LM=false, LG=false, SL=false, X= true, ASR=false }, pointer_mode_encdec(p)),
   // Quadrant 2: Restricted capability data read/write
-  0b10 @ 0b011     <-> (struct{ R= true, W=false, C= true, LM=false, EL=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
-  0b10 @ 0b110     <-> (struct{ R= true, W= true, C= true, LM= true, EL=false, SL= true, X=false, ASR=false }, pointer_mode_encdec(0b0)),
-  0b10 @ 0b111     <-> (struct{ R= true, W= true, C= true, LM= true, EL=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b10 @ 0b011     <-> (struct{ R= true, W=false, C= true, LM=false, LG=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b10 @ 0b110     <-> (struct{ R= true, W= true, C= true, LM= true, LG=false, SL= true, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b10 @ 0b111     <-> (struct{ R= true, W= true, C= true, LM= true, LG=false, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
   // Quadrant 3: Capability data read/write
-  0b11 @ 0b011     <-> (struct{ R= true, W=false, C= true, LM= true, EL= true, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
-  0b11 @ 0b110     <-> (struct{ R= true, W= true, C= true, LM= true, EL= true, SL= true, X=false, ASR=false }, pointer_mode_encdec(0b0)),
-  0b11 @ 0b111     <-> (struct{ R= true, W= true, C= true, LM= true, EL= true, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b11 @ 0b011     <-> (struct{ R= true, W=false, C= true, LM= true, LG= true, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b11 @ 0b110     <-> (struct{ R= true, W= true, C= true, LM= true, LG= true, SL= true, X=false, ASR=false }, pointer_mode_encdec(0b0)),
+  0b11 @ 0b111     <-> (struct{ R= true, W= true, C= true, LM= true, LG= true, SL=false, X=false, ASR=false }, pointer_mode_encdec(0b0)),
 }
 
 // Ideally ap_p_encdec(({null,root}_perms, IntPtrMode)), but spurious incomplete match side-effect at toplevel
@@ -99,19 +99,19 @@ let root_ap_p_32 = 0b01001
 
 // Perform the XLEN-specific YPERMC legalization.
 function legalizePermsAndMode_32(perms : ArchPerms, mode : PointerMode) -> (ArchPerms, PointerMode) = {
-  let perms = if perms.R & perms.W & perms.X & perms.ASR & perms.C & perms.LM & perms.EL & perms.SL then perms else {perms with ASR=false};
+  let perms = if perms.R & perms.W & perms.X & perms.ASR & perms.C & perms.LM & perms.LG & perms.SL then perms else {perms with ASR=false};
   let perms = if perms.R | perms.W then perms else {perms with C=false};
   let perms = if perms.R then perms else {perms with C=false};
   let perms = if perms.R then perms else {perms with X=false};
   let perms = if not(perms.C) | perms.LM then perms else {perms with W=false};
   let perms = if perms.W | perms.C then perms else {perms with X=false};
-  let perms = if perms.C & perms.R then perms else {perms with EL=false};
-  let perms = if perms.LM then perms else {perms with EL=false};
+  let perms = if perms.C & perms.R then perms else {perms with LG=false};
+  let perms = if perms.LM then perms else {perms with LG=false};
   let perms = if perms.C & perms.R then perms else {perms with LM=false};
-  let perms = if perms.W | perms.EL then perms else {perms with LM=false};
+  let perms = if perms.W | perms.LG then perms else {perms with LM=false};
   let perms = if perms.C then perms else {perms with SL=false};
   let perms = if perms.LM & (perms.X | perms.W) then perms else {perms with SL=false};
-  let perms = if perms.C == perms.LM & perms.C == perms.EL & perms.C == perms.SL then perms else {perms with X=false};
+  let perms = if perms.C == perms.LM & perms.C == perms.LG & perms.C == perms.SL then perms else {perms with X=false};
   let perms = if perms.X then perms else {perms with ASR=false};
   let mode  = if perms.X then mode else pointer_mode_encdec(0b0);
   (perms, mode)
