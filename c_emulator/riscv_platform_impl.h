@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-extern bool rv_enable_rvy;
-
 // Provides entropy for the scalar cryptography extension.
 extern uint64_t rv_16_random_bits(void);
 

@@ -5,8 +5,6 @@
 extern "C" {
 #endif
 
-bool sys_enable_rvy(unit);
-
 // Provides entropy for the scalar cryptography extension.
 mach_bits plat_get_16_random_bits(unit);
 

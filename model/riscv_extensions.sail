@@ -71,6 +71,10 @@ function clause hartSupports(Ext_U) = config extensions.U.supported
 enum clause extension = Ext_H
 mapping clause extensionName = Ext_H <-> "h"
 function clause hartSupports(Ext_H) = false
+// CHERI (RVY)
+enum clause extension = Ext_Y
+mapping clause extensionName = Ext_Y <-> "y"
+function clause hartSupports(Ext_Y) = config extensions.Y.supported
 
 // Cache-Block Management Instructions
 enum clause extension = Ext_Zicbom
