@@ -387,6 +387,25 @@ function test_cheri_circular() -> unit = {
     assert(mcause[Cause] == zero_extend(ext_exc_type_to_bits(EXC_CHERI(CapCheckType_Ld()))));
 }
 
+function test_cheri_zero_len() -> unit = {
+    // Arbitrary address to test
+    let addr = zeros(xlen - 16) @ 0x1234;
+    // Create zero-length cap with addr==base==top
+    let (_, zeroLen) = setCapBounds({root_cap with address = addr}, addr, 0b0 @ addr);
+    // Check bounds decode correctly and base == addr == top
+    let (base, top) : (CapAddrInt, CapLenInt) = match(getCapBounds(zeroLen)) {
+      None() => {assert(false); (0, 0)},
+      Some(b, t) => (b, t)
+    };
+    assert(base == unsigned(addr) & top == unsigned(addr));
+    // Len should be zero
+    assert(getCapLength(zeroLen) == 0);
+    // 1 byte at addr is not in bounds
+    assert(not(inCapBounds(zeroLen, addr, 1)));
+    // Fail if any of the bytes surrounding the addr found to be in-bounds
+    assert(not(anyByteInCapBounds(zeroLen, addr - 8, 16)));
+}
+
 function test_cheri_ylen_csr() -> unit = {
     let csr : csreg = csr_name_map("mscratch");
     let (_, capTest) = setCapBounds(root_cap, zero_extend(0x00010000), zero_extend(0x00020000));
@@ -916,6 +935,7 @@ function test_main_ext() -> unit = {
     test_cheri_rounding();
     test_cheri_permission_encoding();
     test_cheri_circular();
+    test_cheri_zero_len();
     test_cheri_ylen_csr();
     test_cheri_csr_access_control();
     test_cheri_malformed();
