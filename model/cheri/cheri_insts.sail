@@ -987,17 +987,17 @@ function clause execute AMOSwapCap(rd, rs2, rs1, aq, rl) = {
             Ok(_)  => {
               match mem_read_cap(typ, addr, pbmt, aq, aq & rl, false) {
                 Ok(v) => {
-                  match mem_write_cap(addr, pbmt, rs2_cap, aq & rl, rl, false) {
-                    Ok(_) => {
-                      if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
-                        Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
-                      } else {
+                  if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
+                    Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
+                  } else {
+                    match mem_write_cap(addr, pbmt, rs2_cap, aq & rl, rl, false) {
+                      Ok(_) => {
                         let cr = clearTagIf(v, ext_ptw.tagged_load_behaviour == TaggedLoadClear | not(canC(auth_val)));
                         Y(rd) = legalizeLoadedPermissions(cr, auth_val);
                         RETIRE_SUCCESS
-                      }
-                    },
-                    Err(e) => Memory_Exception(vaddr, e),
+                      },
+                      Err(e) => Memory_Exception(vaddr, e),
+                    }
                   }
                 },
                 Err(e) => Memory_Exception(vaddr, e),
