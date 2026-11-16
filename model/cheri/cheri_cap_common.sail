@@ -507,9 +507,11 @@ function inCapBounds(cap : Capability, addr : CapAddrBits, size : CapLenInt) -> 
 // Used for certain CBO instructions
 function anyByteInCapBounds(cap : Capability, addr : CapAddrBits, size : CapLenInt) -> bool = {
   let a = unsigned(addr);
+  assert(size > 0); // Req size == 0 must be a mistake, and would cause the check to fail on infinite bounds
   match getCapBounds(cap) {
     None() => false,
-    Some(base, top) => ((a < top) & ((a + size) > base)) | decodedBoundsInfinite(base, top)
+    // Check the two ranges are non-empty and intersect
+    Some(base, top) => ((top > base) & (a < top) & ((a + size) > base)) | decodedBoundsInfinite(base, top)
   }
 }
 
