@@ -156,7 +156,7 @@ function clause execute (YTYPER(rd, rs1)) = {
  */
 function clause execute (YPERMR(rd, rs1)) = {
   let rs1_cap = Y(rs1);
-  X(rd) = packPerms(getArchPermsLegalized(rs1_cap), rs1_cap.gl, rs1_cap.sd_perms).bits;
+  X(rd) = getCapPermsLegalized(rs1_cap).bits;
   RETIRE_SUCCESS
 }
 
@@ -281,7 +281,7 @@ function clause execute(YPERMC(rd, rs1, rs2)) = {
   let rs1_cap = Y(rs1);
   let rs2_val = X(rs2);
 
-  let old_perms = packPerms(getArchPermsLegalized(rs1_cap), rs1_cap.gl, rs1_cap.sd_perms).bits;
+  let old_perms = getCapPermsLegalized(rs1_cap).bits;
 
   let new_perms = old_perms & ~(rs2_val);
 
