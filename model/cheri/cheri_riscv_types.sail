@@ -17,30 +17,32 @@
 // loaded capability tag is set. Otherwise they will always trap.
 function sys_cheri_pte_crg_exception_check_tag() -> bool = false
 
-// Behaviour to apply when a capability is loaded with its tag set.
-enum TaggedLoadBehaviour = {
-   // Loaded tags are allowed.
-  TaggedLoadOk,
-  // If the loaded value has its tag set then a page
-  // fault should be raised.
-  TaggedLoadTrap,
-  // If the loaded value has its tag set then clear it.
-  TaggedLoadClear,
+// Behaviour to apply to capability loads after translation and memory read.
+enum CapLoadBehaviour = {
+  // Loaded tags are allowed.
+  CapLoadOk,
+  // Raise CheriPage_Ld if the loaded tag is set, or unconditionally when
+  // sys_cheri_pte_crg_exception_check_tag() is false.
+  CapLoadTrap,
+  // Clear the loaded capability's tag.
+  CapLoadClear,
 }
 
 // Returned on success and failure from translateAddr().
 struct ext_ptw = {
-  // Behaviour to apply when tagged capabilities are loaded
-  // and we know if they are tagged or not.
-  tagged_load_behaviour : TaggedLoadBehaviour,
+  // Behaviour to apply when capabilities are loaded from memory.
+  cap_load_behaviour : CapLoadBehaviour,
   // Was there a cheri page fault
   cheri_page_fault : option(CheriPageAccess),
 }
 
 let init_ext_ptw : ext_ptw = struct {
-  tagged_load_behaviour = TaggedLoadOk,
+  cap_load_behaviour = CapLoadOk,
   cheri_page_fault = None(),
 }
+
+function cap_load_should_trap(ext_ptw : ext_ptw, tag : bool) -> bool =
+  ext_ptw.cap_load_behaviour == CapLoadTrap & (tag | not(sys_cheri_pte_crg_exception_check_tag()))
 
 /* CHERI exception extensions */
 

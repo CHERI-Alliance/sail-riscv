@@ -17,9 +17,18 @@ function pte_permission_ok(
 ) -> (bool, ext_ptw) = {
   let non_cheri_page_ok = pte_rwxu_permission_ok(ac, priv, mxr, do_sum, pte)
                         & (plat_enable_dirty_update | ((pte[A] == 0b1) & (pte[D] == 0b1 | not(isWriteAc(ac))))) ;
+  // Step 6 of VATP checks pte.u before Step 7 checks pte.rvy for capability stores.
+  // TODO: use priv_ok from check_PTE_permission() after merging upstream
+  // (https://github.com/riscv/sail-riscv/pull/1224).
+  let pte_u_ok : bool = match (ac, priv) {
+    (_, User)                        => pte[U] == 0b1,
+    (InstructionFetch(), Supervisor) => pte[U] == 0b0,
+    (_, Supervisor)                  => (pte[U] == 0b0) | do_sum,
+    (_, Machine)                     => internal_error(__FILE__, __LINE__, "m-mode mem perm check"),
+  };
 
   var cheri_page_fault : option(CheriPageAccess) = None();
-  var tagged_load_behaviour = TaggedLoadOk;
+  var cap_load_behaviour = CapLoadOk;
 
   // CHERI PTE features only supported on RV64.
   match ext {
@@ -28,28 +37,26 @@ function pte_permission_ok(
         let pte_rvy = Mk_PTE_RVY(ext[rvy]);
         // Note the Write and Read checks are not mutually exclusive for atomics
         if pte_rvy[Y] == 0b0 then {
-          if isTaggedWrite(ac) then cheri_page_fault = Some(CheriPage_St);
-          if isTaggedRead(ac) then tagged_load_behaviour = TaggedLoadClear;
+          if pte_u_ok & isTaggedWrite(ac) then cheri_page_fault = Some(CheriPage_St);
+          if isTaggedRead(ac) then cap_load_behaviour = CapLoadClear;
         }
       } else {
         let pte_rvy = Mk_PTE_RVY_SVYRG(ext[rvy]);
         // Note the Write and Read checks are not mutually exclusive for atomics.
-        if isTaggedWrite(ac) then {
+        if pte_u_ok & isTaggedWrite(ac) then {
           if pte_rvy[YW] == 0b0 then cheri_page_fault = Some(CheriPage_St)
           // YD checks carried out in "update_pte"
         };
         if isTaggedRead(ac) then {
           match (pte_rvy[YR], pte_rvy[YRG]) {
-            (0b0, 0b0) => tagged_load_behaviour = TaggedLoadClear,
+            (0b0, 0b0) => cap_load_behaviour = CapLoadClear,
             (0b0, 0b1) => (),
             (0b1, YRG) => {
               let xYRG = if pte[U] == 0b1 then mstatus[UYRG] else mstatus[SYRG];
               if YRG != xYRG then {
-                if sys_cheri_pte_crg_exception_check_tag() then {
-                  tagged_load_behaviour = TaggedLoadTrap;
-                } else {
-                  cheri_page_fault = Some(CheriPage_Ld);
-                }
+                // Checked after translation and memory read so CheriPage_Ld has
+                // lowest priority even when trapping conservatively.
+                cap_load_behaviour = CapLoadTrap;
               }
             }
           }
@@ -60,7 +67,7 @@ function pte_permission_ok(
   };
 
   let ext_ptw = { ext_ptw with
-    tagged_load_behaviour = tagged_load_behaviour,
+    cap_load_behaviour = cap_load_behaviour,
     cheri_page_fault = cheri_page_fault
   };
 

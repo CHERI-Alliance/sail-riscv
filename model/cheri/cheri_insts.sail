@@ -763,11 +763,11 @@ function clause execute (LoadResCap(rd, rs1, aq, rl)) = {
           let c = mem_read_cap(Read(Data), addr, pbmt, aq, aq & rl, true);
           match c {
             Ok(v) => {
-              if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
+              if cap_load_should_trap(ext_ptw, v.tag) then {
                 Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
               } else {
                 load_reservation(bits_of_physaddr(addr));
-                let cr = clearTagIf(v, ext_ptw.tagged_load_behaviour == TaggedLoadClear | not(canC(auth_val)));
+                let cr = clearTagIf(v, ext_ptw.cap_load_behaviour == CapLoadClear | not(canC(auth_val)));
                 Y(rd) = legalizeLoadedPermissions(cr, auth_val);
                 RETIRE_SUCCESS
               }
@@ -822,10 +822,10 @@ function clause execute LoadCapImm(rd, rs1, imm) = {
           let rl = false;
           match mem_read_cap(Read(Data), addr, pbmt, aq, aq & rl, false) {
             Ok(v) => {
-              if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
+              if cap_load_should_trap(ext_ptw, v.tag) then {
                 Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
               } else {
-                let cr = clearTagIf(v, ext_ptw.tagged_load_behaviour == TaggedLoadClear | not(canC(auth_val)));
+                let cr = clearTagIf(v, ext_ptw.cap_load_behaviour == CapLoadClear | not(canC(auth_val)));
                 Y(rd) = legalizeLoadedPermissions(cr, auth_val);
                 RETIRE_SUCCESS
               }
@@ -987,12 +987,12 @@ function clause execute AMOSwapCap(rd, rs2, rs1, aq, rl) = {
             Ok(_)  => {
               match mem_read_cap(typ, addr, pbmt, aq, aq & rl, false) {
                 Ok(v) => {
-                  if v.tag & ext_ptw.tagged_load_behaviour == TaggedLoadTrap then {
+                  if cap_load_should_trap(ext_ptw, v.tag) then {
                     Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
                   } else {
                     match mem_write_cap(addr, pbmt, rs2_cap, aq & rl, rl, false) {
                       Ok(_) => {
-                        let cr = clearTagIf(v, ext_ptw.tagged_load_behaviour == TaggedLoadClear | not(canC(auth_val)));
+                        let cr = clearTagIf(v, ext_ptw.cap_load_behaviour == CapLoadClear | not(canC(auth_val)));
                         Y(rd) = legalizeLoadedPermissions(cr, auth_val);
                         RETIRE_SUCCESS
                       },

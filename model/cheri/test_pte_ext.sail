@@ -1,3 +1,5 @@
+// Some of these tests were written with AI assistance. Please see the commit log for details.
+
 // TODO this works around an apparent Sail compiler bug where tuple comparison of bools tries to evaluate the value of the bool within the type system
 function test_perm_check_match((ret_ok : bool, ret_ext_ptw : ext_ptw), (exp_ok : bool, exp_ext_ptw : ext_ptw), test_name : string) -> unit =
     {assert(ret_ok == exp_ok & ret_ext_ptw == exp_ext_ptw, test_name)}
@@ -41,23 +43,27 @@ function test_cheri_pte_checks_yrge() -> unit = {
     // Construct inputs that should trigger a load capability fault, i.e. emulate being in the middle of a revocation sweep
     let revokingYRGExtPTE = [maxExtPTE with rvy = [maxSYRG with YRG=0b0].bits];
     let revokingUserPTEs = {allAllowedUserPTEs with ext = Some(revokingYRGExtPTE)};
+    let noYWExtPTE = [maxExtPTE with rvy = [maxSYRG with YW=0b0].bits];
+    let bothFaultExtPTE = [maxExtPTE with rvy = [maxSYRG with YW=0b0, YRG=0b0].bits];
+    let ext_ptw_cheri_st = {init_ext_ptw with cheri_page_fault = Some(CheriPage_St)};
+
+    // Step 6 (U=1 with SUM=0) outranks Step 7 (CheriPage_St when YW=0)
+    check_pte_access({allAllowedUserPTEs with priv = Supervisor, do_sum = false, ext = Some(noYWExtPTE)}, Write(Tagged), false, init_ext_ptw, "S-mode U=1 SUM=0 outranks CheriPage_St");
+    check_pte_access({allAllowedUserPTEs with priv = Supervisor, do_sum = true, ext = Some(noYWExtPTE)}, Write(Tagged), false, ext_ptw_cheri_st, "S-mode U=1 SUM=1 raises CheriPage_St");
 
     // Integer reads succeed
     check_pte_access_success(revokingUserPTEs, Read(Data), "revoking int read");
-    // Split based on whether we support tag-dependent traps
-    if sys_cheri_pte_crg_exception_check_tag() then {
-      let ext_ptw_trap_on_tag = {init_ext_ptw with tagged_load_behaviour = TaggedLoadTrap};
-      // Capability reads fail
-      check_pte_access(revokingUserPTEs, Read(Tagged), true, ext_ptw_trap_on_tag , "revoking cap read (tagdep)");
-      // Capability atomics fail
-      check_pte_access(revokingUserPTEs, ReadWrite(Tagged, Tagged), true, ext_ptw_trap_on_tag, "revoking cap amo (tagdep)");
-    } else {
-      let ext_ptw_cheri_ld = {init_ext_ptw with cheri_page_fault = Some(CheriPage_Ld)};
-      // Capability reads fail
-      check_pte_access(revokingUserPTEs, Read(Tagged), false, ext_ptw_cheri_ld, "revoking cap read (conservative)");
-      // Capability atomics fail
-      check_pte_access(revokingUserPTEs, ReadWrite(Tagged, Tagged), false, ext_ptw_cheri_ld, "revoking cap amo (conservative)");
-    }
+    // Revoking capability loads and AMOs pass translation and defer CheriPage_Ld
+    // until after the memory read so higher-priority faults win.
+    let ext_ptw_cap_trap = {init_ext_ptw with cap_load_behaviour = CapLoadTrap};
+    check_pte_access(revokingUserPTEs, Read(Tagged), true, ext_ptw_cap_trap, "revoking cap read");
+    check_pte_access(revokingUserPTEs, ReadWrite(Tagged, Tagged), true, ext_ptw_cap_trap, "revoking cap amo");
+    assert(cap_load_should_trap(ext_ptw_cap_trap, true));
+    assert(cap_load_should_trap(ext_ptw_cap_trap, false) == not(sys_cheri_pte_crg_exception_check_tag()));
+    // Standard page fault (W=0) and CheriPage_St (YW=0) fail during translation,
+    // outranking CheriPage_Ld.
+    check_pte_access({revokingUserPTEs with pte = [maxPTE with W = 0b0]}, ReadWrite(Tagged, Tagged), false, ext_ptw_cap_trap, "W=0 outranks CheriPage_Ld on cap amo");
+    check_pte_access({revokingUserPTEs with ext = Some(bothFaultExtPTE)}, ReadWrite(Tagged, Tagged), false, {ext_ptw_cap_trap with cheri_page_fault = Some(CheriPage_St)}, "CheriPage_St outranks CheriPage_Ld on cap amo");
 }
 
 function test_pte_ext() -> unit = {
