@@ -1,3 +1,5 @@
+// Some of these tests were written with AI assistance. Please see the commit log for details.
+
 function test_cheri_cap_encoding() -> unit = {
     // Check the null cap decodes from all 0s.
     // In future we will encode it from all 0s so we won't need to check that.
@@ -512,12 +514,19 @@ function test_cheri_malformed() -> unit = {
     assert_behaviour(badPermsCap   , capR, outR, instr, None(), true, {badPermsCap with tag=false}    , undefined);
     assert_behaviour(badReservedCap, capR, outR, instr, None(), true, {badReservedCap with tag=false} , undefined);
 
-    // YPERMC legalises the *perms*. Clears tag if any fields malformed
+    // YPERMR returns zero for all allocated permission bits (AP, GL, SDP) if any fields are malformed.
+    let instr = YPERMR(outR, capR);
+    let nullPermsBits = getCapPermsLegalized(null_cap).bits;
+    assert_behaviour(badBoundsCap  , capR, outR, instr, None(), false, undefined, nullPermsBits);
+    assert_behaviour(badPermsCap   , capR, outR, instr, None(), false, undefined, nullPermsBits);
+    assert_behaviour(badReservedCap, capR, outR, instr, None(), false, undefined, nullPermsBits);
+
+    // YPERMC legalises the *perms*. Clears tag, AP, P, GL, and SDP if any fields are malformed.
     let instr = YPERMC(outR, capR, otherR);
     X(otherR) = zeros();
-    assert_behaviour(badBoundsCap  , capR, outR, instr, None(), true, {badBoundsCap with ap_p = zeros(), tag=false}   , undefined);
-    assert_behaviour(badPermsCap   , capR, outR, instr, None(), true, {badPermsCap with ap_p = zeros(), tag=false}    , undefined);
-    assert_behaviour(badReservedCap, capR, outR, instr, None(), true, {badReservedCap with ap_p = zeros(), tag=false} , undefined);
+    assert_behaviour(badBoundsCap  , capR, outR, instr, None(), true, {badBoundsCap with ap_p = zeros(), gl = zeros(), sd_perms = zeros(), tag=false}   , undefined);
+    assert_behaviour(badPermsCap   , capR, outR, instr, None(), true, {badPermsCap with ap_p = zeros(), gl = zeros(), sd_perms = zeros(), tag=false}    , undefined);
+    assert_behaviour(badReservedCap, capR, outR, instr, None(), true, {badReservedCap with ap_p = zeros(), gl = zeros(), sd_perms = zeros(), tag=false} , undefined);
 
     // YSS checks all the fields.
     let (_, zeroCapTagged) = setCapBounds({ null_cap with tag=true }, zeros(), zeros());
