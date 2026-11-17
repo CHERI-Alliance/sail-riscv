@@ -389,9 +389,9 @@ function clause is_CSR_defined(0x30A) = currentlyEnabled(Ext_U) // menvcfg
 function clause is_CSR_defined(0x31A) = currentlyEnabled(Ext_U) & (xlen == 32) // menvcfgh
 function clause is_CSR_defined(0x10A) = currentlyEnabled(Ext_S) // senvcfg
 
-function clause read_CSR(0x30A) = menvcfg.bits[xlen - 1 .. 0]
-function clause read_CSR(0x31A if xlen == 32) = menvcfg.bits[63 .. 32]
-function clause read_CSR(0x10A) = senvcfg.bits[xlen - 1 .. 0]
+function clause read_CSR(0x30A) = legalize_menvcfg(menvcfg, menvcfg.bits).bits[xlen - 1 .. 0]
+function clause read_CSR(0x31A if xlen == 32) = legalize_menvcfg(menvcfg, menvcfg.bits).bits[63 .. 32]
+function clause read_CSR(0x10A) = legalize_senvcfg(senvcfg, senvcfg.bits).bits[xlen - 1 .. 0]
 
 val set_menvcfg : (bits(64)) -> unit
 val set_senvcfg : (xlenbits) -> unit
