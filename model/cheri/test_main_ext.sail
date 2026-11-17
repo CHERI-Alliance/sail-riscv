@@ -401,8 +401,10 @@ function test_cheri_zero_len() -> unit = {
     // Len should be zero
     assert(getCapLength(zeroLen) == 0);
     // 1 byte at addr is not in bounds
+    assert(1 <= (2 ^ (xlen + 1) - 1)); // Workaround sail compiler issues
     assert(not(inCapBounds(zeroLen, addr, 1)));
     // Fail if any of the bytes surrounding the addr found to be in-bounds
+    assert(16 <= (2 ^ (xlen + 1) - 1)); // Workaround sail compiler issues
     assert(not(anyByteInCapBounds(zeroLen, addr - 8, 16)));
 }
 
