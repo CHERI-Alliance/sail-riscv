@@ -680,7 +680,7 @@ union clause instruction = YSEALE : (regidx, regidx)
  */
 function clause execute (YSEALE(rd, rs2)) = {
   let rs2_cap = Y(rs2);
-  let rs2_cap = clearTagIf(rs2_cap, capIsSealed(rs2_cap));
+  let rs2_cap = clearTagIf(rs2_cap, capIsSealed(rs2_cap) | capIsMalformed(rs2_cap));
   Y(rd) = sealCap(rs2_cap);
   RETIRE_SUCCESS
 }
