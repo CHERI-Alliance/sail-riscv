@@ -1,0 +1,133 @@
+name: Publish Sail docs JSON
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+      - "!docs-latest"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to publish to (defaults to docs-latest)"
+        required: false
+        default: "docs-latest"
+        type: string
+      prerelease:
+        description: "Mark a newly created release as a pre-release"
+        required: false
+        default: true
+        type: boolean
+      draft:
+        description: "Create a newly created release as a draft"
+        required: false
+        default: false
+        type: boolean
+      notes:
+        description: "Release notes (only used when creating a new release)"
+        required: false
+        type: string
+
+concurrency:
+  group: "${{ github.workflow }}-${{ inputs.tag_name || (github.ref_type == 'tag' && github.ref_name) || 'docs-latest' }}"
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish Sail documentation JSON
+    if: github.event_name == 'workflow_dispatch' || github.repository == 'CHERI-Alliance/sail-riscv'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      SAIL_VERSION: "0.19.1"
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libgmp-dev curl ninja-build
+
+      - name: Install Sail
+        run: |
+          sudo mkdir -p /usr/local
+          curl --fail --show-error --silent --location "https://github.com/rems-project/sail/releases/download/${SAIL_VERSION}-linux-binary/sail.tar.gz" | sudo tar xvz --directory=/usr/local --strip-components=1
+
+      - name: Build documentation JSON
+        run: |
+          cmake -S . -B build -GNinja -DCMAKE_BUILD_TYPE=Release
+          ninja -C build generated_sail_riscv_docs
+
+      - name: Upload documentation JSON artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sail_riscv_model.json
+          path: build/model/sail_riscv_model.json
+          if-no-files-found: error
+
+      - name: Publish to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG_NAME: ${{ inputs.tag_name }}
+          INPUT_PRERELEASE: ${{ inputs.prerelease }}
+          INPUT_DRAFT: ${{ inputs.draft }}
+          INPUT_NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+
+          ASSET="build/model/sail_riscv_model.json"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="${INPUT_TAG_NAME:-docs-latest}"
+          elif [ "$REF_TYPE" = "tag" ]; then
+            TAG="$REF_NAME"
+          else
+            TAG="docs-latest"
+          fi
+
+          if [ "$TAG" = "docs-latest" ]; then
+            git tag --force docs-latest "$GITHUB_SHA"
+            git push --force origin refs/tags/docs-latest
+            NOTES="Rolling pre-release of \`sail_riscv_model.json\` built from commit ${GITHUB_SHA}."
+            if gh release view docs-latest >/dev/null 2>&1; then
+              gh release upload docs-latest "$ASSET" --clobber
+              gh release edit docs-latest \
+                --title "Latest Sail documentation JSON" \
+                --notes "$NOTES" \
+                --prerelease \
+                --latest=false
+            else
+              gh release create docs-latest "$ASSET" \
+                --title "Latest Sail documentation JSON" \
+                --notes "$NOTES" \
+                --prerelease \
+                --latest=false
+            fi
+          elif gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" --clobber
+          else
+            ARGS=(--title "$TAG")
+            if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+              ARGS+=(--target "$GITHUB_SHA")
+              if [ "$INPUT_PRERELEASE" = "true" ]; then
+                ARGS+=(--prerelease)
+              fi
+              if [ "$INPUT_DRAFT" = "true" ]; then
+                ARGS+=(--draft)
+              fi
+              if [ -n "$INPUT_NOTES" ]; then
+                ARGS+=(--notes "$INPUT_NOTES")
+              else
+                ARGS+=(--generate-notes)
+              fi
+            else
+              ARGS+=(--generate-notes)
+            fi
+            gh release create "$TAG" "$ASSET" "${ARGS[@]}"
+          fi
