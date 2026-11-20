@@ -163,7 +163,7 @@ sbits plat_pma_size(mach_bits i)
 {
   sbits result;
   result.len = zphysaddrbits_len;
-  result.bits = 0xF0000000;
+  result.bits = UINT64_C(0x100000000);
   return result;
 }
 
