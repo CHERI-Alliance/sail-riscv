@@ -50,7 +50,9 @@ function clause execute (ZBA_Y_RTYPEUW(rs2, rs1, rd, op)) = {
     RISCV_YSH3ADDUW => 3,
     RISCV_YSH4ADDUW => 4,
   };
-  let result = incCapAddrChecked(rs2_cap, zero_extend(rs1_val[31..0]) << shamt);
+  let result = incCapAddrChecked(
+    rs2_cap, zero_extend(rs1_val[31..0]) << shamt
+  );
   Y(rd) = result;
   RETIRE_SUCCESS
 }
