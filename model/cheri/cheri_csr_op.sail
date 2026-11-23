@@ -127,13 +127,19 @@ function handle_csr_op(csr, rs1, rd, is_imm, op, isWrite, isRead) = {
   if is_ylen_csr(csr) then {
     // The only way to write metadata is with `csrrw`.
     // For extended CSRs, it also has to be in CapPtrMode mode.
-    // Note `op == CSRRW` means `csrrw` or` csrrwi` which is why we also check `not(is_imm)`.
-    let ylen_write = (effective_cheri_mode() == CapPtrMode | csr_type(csr) == YlenNew) & op == CSRRW & not(is_imm);
-    let write_val = if is_imm then {null_cap with address = zero_extend(regidx_bits(rs1))}
+    // Note `op == CSRRW` means `csrrw` or `csrrwi`, which is why we also
+    // check `not(is_imm)`.
+    let ylen_write =
+      (effective_cheri_mode() == CapPtrMode | csr_type(csr) == YlenNew) &
+      op == CSRRW & not(is_imm);
+    let write_val =
+      if is_imm then
+        {null_cap with address = zero_extend(regidx_bits(rs1))}
       else if ylen_write then Y(rs1)
       else {null_cap with address = X(rs1)};
     // Reads of YLEN registers are always YLEN.
-    let csr_val = if isRead then read_ylen_csr(csr, write_val) else zero_reg;
+    let csr_val =
+      if isRead then read_ylen_csr(csr, write_val) else zero_reg;
     if isWrite then {
       if ylen_write then {
         write_ylen_csr(csr, write_val);
@@ -146,7 +152,8 @@ function handle_csr_op(csr, rs1, rd, is_imm, op, isWrite, isRead) = {
         write_ylen_csr_with_xlen(csr, new_val);
       };
     };
-    if effective_cheri_mode() == CapPtrMode | csr_type(csr) == YlenNew then {
+    if effective_cheri_mode() == CapPtrMode |
+       csr_type(csr) == YlenNew then {
       Y(rd) = csr_val;
     } else {
       X(rd) = csr_val.address;

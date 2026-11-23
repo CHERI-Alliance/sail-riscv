@@ -46,7 +46,8 @@ function clause execute(JAL_capmode(imm, rd)) = {
   if newPC[1] == bitone & not(currentlyEnabled(Ext_Zca)) then {
     Memory_Exception(Virtaddr(newPC), E_Fetch_Addr_Align())
   } else {
-    let (success, linkCap) = setCapAddr(PCC, nextPC); /* Note that nextPC accounts for compressed instructions */
+    // Note that nextPC accounts for compressed instructions.
+    let (success, linkCap) = setCapAddr(PCC, nextPC);
     assert(success, "Link cap should always be representable.");
     assert(not(capIsSealed(linkCap)), "Link cap should always be unsealed");
     Y(rd) = sealCap(linkCap);
@@ -75,19 +76,24 @@ function clause execute(JALR_capmode(imm, rs1, rd)) = {
 
   // Calculate new PC which may be offset from the capability address.
   let off : xlenbits = sign_extend(imm);
-  let newPC = [rs1_cap.address + off with 0 = bitzero]; /* clear bit zero as for RISCV JALR */
+  // Clear bit zero as for RISC-V JALR.
+  let newPC = [rs1_cap.address + off with 0 = bitzero];
 
   if newPC[1] == bitone & not(currentlyEnabled(Ext_Zca)) then {
     Memory_Exception(Virtaddr(newPC), E_Fetch_Addr_Align())
   } else {
-    let (success, linkCap) = setCapAddr(PCC, nextPC); /* Note that nextPC accounts for compressed instructions */
+    // Note that nextPC accounts for compressed instructions.
+    let (success, linkCap) = setCapAddr(PCC, nextPC);
     assert(success, "Link cap should always be representable.");
     assert(not(capIsSealed(linkCap)), "Link cap should always be unsealed");
     Y(rd) = sealCap(linkCap);
     set_next_pc(newPC);
 
-    // Unseal the target capability if permitted
-    let newPCC = if off == zeros() & rs1_cap.address[0] == bitzero then unsealCap(rs1_cap) else rs1_cap;
+    // Unseal the target capability if permitted.
+    let newPCC =
+      if off == zeros() & rs1_cap.address[0] == bitzero
+      then unsealCap(rs1_cap)
+      else rs1_cap;
 
     // Construct the new capability pointing to the address + offset.
     set_next_pcc(setCapAddrChecked(newPCC, newPC, false));
@@ -187,7 +193,7 @@ function clause execute (YTOPR(rd, rs1)) = {
     None() => 0,
     Some(_, top) => top
   };
-  X(rd) = to_bits(xlen, if top > cap_max_addr then cap_max_addr else top) ;
+  X(rd) = to_bits(xlen, if top > cap_max_addr then cap_max_addr else top);
   RETIRE_SUCCESS
 }
 
@@ -275,13 +281,21 @@ function clause execute(YPERMC(rd, rs1, rs2)) = {
 
   let new_perms = old_perms & ~(rs2_val);
 
-  let (new_arch_perms, new_g, new_sd_perms) = unpackPerms(struct {bits = new_perms});
-  let newCap = { setArchPerms(rs1_cap, new_arch_perms) with g = new_g, sd_perms = new_sd_perms };
+  let (new_arch_perms, new_g, new_sd_perms) =
+    unpackPerms(struct {bits = new_perms});
+  let newCap = {
+    setArchPerms(rs1_cap, new_arch_perms) with
+    g = new_g,
+    sd_perms = new_sd_perms
+  };
 
-  // YPERMC only clears the tag on a sealed capability if AP or SDP bits are modified;
-  // clearing GL (or masking with zero / already-clear bits) preserves the tag.
-  let perms_modified = (newCap.ap_p != rs1_cap.ap_p) | (newCap.sd_perms != rs1_cap.sd_perms);
-  let clear_tag = (capIsSealed(rs1_cap) & perms_modified) | capIsMalformed(rs1_cap);
+  // YPERMC only clears the tag on a sealed capability if AP or SDP bits
+  // are modified; clearing G (or masking with zero / already-clear bits)
+  // preserves the tag.
+  let perms_modified =
+    (newCap.ap_p != rs1_cap.ap_p) | (newCap.sd_perms != rs1_cap.sd_perms);
+  let clear_tag =
+    (capIsSealed(rs1_cap) & perms_modified) | capIsMalformed(rs1_cap);
   Y(rd) = clearTagIf(newCap, clear_tag);
   RETIRE_SUCCESS
 }
@@ -307,7 +321,8 @@ function clause execute(YMODEW(rd, rs1, rs2)) = {
   let rs1_cap = clearTagIf(rs1_cap, cond);
 
   let hasMode = canX(rs1_cap);
-  let newCap = if hasMode & not(cond) then setCapMode(rs1_cap, mode) else rs1_cap;
+  let newCap =
+    if hasMode & not(cond) then setCapMode(rs1_cap, mode) else rs1_cap;
 
   Y(rd) = newCap;
   RETIRE_SUCCESS
@@ -434,7 +449,8 @@ function clause execute (YBNDSRW(rd, rs1, rs2)) = {
   assert(2 ^ xlen <= cap_max_len);
   // inCapBoundsNoWrap returns false if the input bounds are malformed.
   let inBounds = inCapBoundsNoWrap(rs1_cap, newBase, unsigned(length));
-  let (_, newCap) : (bool, Capability) = setCapBounds(rs1_cap, newBase, newTop);
+  let (_, newCap) : (bool, Capability) =
+    setCapBounds(rs1_cap, newBase, newTop);
   let cond = not(inBounds) |
              capIsMalformed(newCap) |
              capIsSealed(newCap);
@@ -473,7 +489,8 @@ function clause execute (YBNDSWI(rd, rs1, uimm9)) = {
   let newTop : CapLenBits = zero_extend(newBase) + length;
   // inCapBoundsNoWrap returns false if the input bounds are malformed.
   let inBounds = inCapBoundsNoWrap(rs1_cap, newBase, unsigned(length));
-  let (exact, newCap) : (bool, Capability) = setCapBounds(rs1_cap, newBase, newTop);
+  let (exact, newCap) : (bool, Capability) =
+    setCapBounds(rs1_cap, newBase, newTop);
   let cond = not(inBounds) |
              not(exact) |
              capIsMalformed(newCap) |
@@ -507,7 +524,8 @@ function clause execute (YBNDSW(rd, rs1, rs2)) = {
   assert(2 ^ xlen <= cap_max_len);
   // inCapBoundsNoWrap returns false if the input bounds are malformed.
   let inBounds = inCapBoundsNoWrap(rs1_cap, newBase, unsigned(length));
-  let (exact, newCap) : (bool, Capability) = setCapBounds(rs1_cap, newBase, newTop);
+  let (exact, newCap) : (bool, Capability) =
+    setCapBounds(rs1_cap, newBase, newTop);
   let cond = not(inBounds & exact) |
              capIsMalformed(newCap) |
              capIsSealed(newCap);
@@ -557,10 +575,10 @@ function clause execute (YBLD(rd, rs1, rs2)) = {
   let rs1_cap = Y(rs1);
   let rs2_cap = Y(rs2);
 
+  // capIsSubset checks for malformed bounds, perms, and reserved bits.
   let tag = rs1_cap.tag &
             not(capIsSealed(rs1_cap)) &
-            capIsSubset(rs2_cap, rs1_cap); /* Subset checks for malformed bounds,
-                                              perms, and reserved bits */
+            capIsSubset(rs2_cap, rs1_cap);
 
   Y(rd) = { rs2_cap with tag = tag };
   RETIRE_SUCCESS
@@ -594,12 +612,12 @@ function clause execute (YUNSEALS(rd, rs1, rs2)) = {
 
   let new_cap = { rs2_cap with sealed=false };
 
+  // capIsSubset checks for malformed bounds, perms, and reserved bits.
   let tag = rs1_cap.tag &
             new_cap.tag &
             not(capIsSealed(rs1_cap)) &
             capIsSealed(rs2_cap) &
-            capIsSubset(new_cap, rs1_cap); /* Subset checks for malformed bounds,
-                                              perms, and reserved bits */
+            capIsSubset(new_cap, rs1_cap);
 
   Y(rd) = { new_cap with tag = tag };
   RETIRE_SUCCESS
@@ -642,11 +660,11 @@ function clause execute (YSS(rd, rs1, rs2)) = {
   let rs1_cap = Y(rs1);
   let rs2_cap = Y(rs2);
 
+  // capIsSubset returns false if either input has malformed bounds,
+  // perms, or non-zero reserved bits.
   X(rd) = zero_extend(bool_bits(
     (rs1_cap.tag == rs2_cap.tag) &
-    capIsSubset(rs2_cap, rs1_cap) /* capIsSubset returns false if either input
-                                     has malformed bounds, perms, or non-zero
-                                     reserved bits */
+    capIsSubset(rs2_cap, rs1_cap)
   ));
   RETIRE_SUCCESS
 }
@@ -680,7 +698,8 @@ union clause instruction = YSEALE : (regidx, regidx)
  */
 function clause execute (YSEALE(rd, rs2)) = {
   let rs2_cap = Y(rs2);
-  let rs2_cap = clearTagIf(rs2_cap, capIsSealed(rs2_cap) | capIsMalformed(rs2_cap));
+  let rs2_cap =
+    clearTagIf(rs2_cap, capIsSealed(rs2_cap) | capIsMalformed(rs2_cap));
   Y(rd) = sealCap(rs2_cap);
   RETIRE_SUCCESS
 }
@@ -745,19 +764,26 @@ function clause execute (LoadResCap(rd, rs1, aq, rl)) = {
   match cap_mem_standard_errors(auth_val, vaddr, Cap_Read) {
     Some(r) => r,
     None() => {
-      // If we don't have C capability then the tag will always be cleared and
-      // it is treated as an untagged load.
-      match translateAddr(vaddr, Read(if canC(auth_val) then Tagged else Data)) {
-        Err(e, ext_ptw)         => Translate_Exception(vaddr, e, ext_ptw),
+      // If we don't have C permission then the tag will always be cleared
+      // and it is treated as an untagged load.
+      let typ = Read(if canC(auth_val) then Tagged else Data);
+      match translateAddr(vaddr, typ) {
+        Err(e, ext_ptw) => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, ext_ptw) => {
           let c = mem_read_cap(Read(Data), addr, pbmt, aq, aq & rl, true);
           match c {
             Ok(v) => {
               if cap_load_should_trap(ext_ptw, v.tag) then {
-                Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
+                let exc = E_Extension(
+                  EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))
+                );
+                Translate_Exception(vaddr, exc, ext_ptw)
               } else {
                 load_reservation(bits_of_physaddr(addr));
-                let cr = clearTagIf(v, ext_ptw.cap_load_behaviour == CapLoadClear | not(canC(auth_val)));
+                let clear_tag =
+                  ext_ptw.cap_load_behaviour == CapLoadClear |
+                  not(canC(auth_val));
+                let cr = clearTagIf(v, clear_tag);
                 Y(rd) = legalizeLoadedPermissions(cr, auth_val);
                 RETIRE_SUCCESS
               }
@@ -803,19 +829,26 @@ function clause execute LoadCapImm(rd, rs1, imm) = {
   match cap_mem_standard_errors(auth_val, vaddr, Cap_Read) {
     Some(r) => r,
     None() => {
-      // If we don't have C capability then the tag will always be cleared and
-      // it is treated as an untagged load.
-      match translateAddr(vaddr, Read(if canC(auth_val) then Tagged else Data)) {
-        Err(e, ext_ptw)         => Translate_Exception(vaddr, e, ext_ptw),
+      // If we don't have C permission then the tag will always be cleared
+      // and it is treated as an untagged load.
+      let typ = Read(if canC(auth_val) then Tagged else Data);
+      match translateAddr(vaddr, typ) {
+        Err(e, ext_ptw) => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, ext_ptw) => {
           let aq = false;
           let rl = false;
           match mem_read_cap(Read(Data), addr, pbmt, aq, aq & rl, false) {
             Ok(v) => {
               if cap_load_should_trap(ext_ptw, v.tag) then {
-                Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
+                let exc = E_Extension(
+                  EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))
+                );
+                Translate_Exception(vaddr, exc, ext_ptw)
               } else {
-                let cr = clearTagIf(v, ext_ptw.cap_load_behaviour == CapLoadClear | not(canC(auth_val)));
+                let clear_tag =
+                  ext_ptw.cap_load_behaviour == CapLoadClear |
+                  not(canC(auth_val));
+                let cr = clearTagIf(v, clear_tag);
                 Y(rd) = legalizeLoadedPermissions(cr, auth_val);
                 RETIRE_SUCCESS
               }
@@ -860,7 +893,8 @@ function clause execute StoreCapImm(rs2, rs1, imm) = {
       let rs2_cap = clearTagIf(rs2_cap, not(canC(auth_val)));
       let rs2_cap = legalizeStoredPermissions(rs2_cap, auth_val);
 
-      match translateAddr(vaddr, Write(if rs2_cap.tag then Tagged else Data)) {
+      let typ = Write(if rs2_cap.tag then Tagged else Data);
+      match translateAddr(vaddr, typ) {
         Err(e, ext_ptw)   => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, _) => {
           let aq = false;
@@ -870,7 +904,9 @@ function clause execute StoreCapImm(rs2, rs1, imm) = {
             Ok(_)  => {
               match mem_write_cap(addr, pbmt, rs2_cap, aq & rl, rl, false) {
                 Ok(true)  => RETIRE_SUCCESS,
-                Ok(false) => internal_error(__FILE__, __LINE__, "store got false from mem_write_value"),
+                Ok(false) => internal_error(
+                  __FILE__, __LINE__, "store got false from mem_write_value"
+                ),
                 Err(e)    => Memory_Exception(vaddr, e),
               }
             }
@@ -908,7 +944,8 @@ function clause execute StoreCondCap(rd, rs2, rs1, aq, rl) = {
       let rs2_cap = clearTagIf(rs2_cap, not(canC(auth_val)));
       let rs2_cap = legalizeStoredPermissions(rs2_cap, auth_val);
 
-      match translateAddr(vaddr, Write(if rs2_cap.tag then Tagged else Data)) {
+      let typ = Write(if rs2_cap.tag then Tagged else Data);
+      match translateAddr(vaddr, typ) {
         Err(e, ext_ptw)   => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, _) => {
           if not(match_reservation(bits_of_physaddr(addr))) then {
@@ -920,7 +957,9 @@ function clause execute StoreCondCap(rd, rs2, rs1, aq, rl) = {
             match mem_write_ea_cap(addr, aq & rl, rl, true) {
               Err(e) => Memory_Exception(vaddr, e),
               Ok(_)  => {
-                match mem_write_cap(addr, pbmt, rs2_cap, aq & rl, rl, true) {
+                match mem_write_cap(
+                  addr, pbmt, rs2_cap, aq & rl, rl, true
+                ) {
                   Ok(true) => {
                     X(rd) = zero_extend(0b0);
                     cancel_reservation();
@@ -965,12 +1004,15 @@ function clause execute AMOSwapCap(rd, rs2, rs1, aq, rl) = {
       let rs2_cap = clearTagIf(rs2_cap, not(canC(auth_val)));
       let rs2_cap = legalizeStoredPermissions(rs2_cap, auth_val);
 
-      // If we don't have C capability then the tag will always be cleared and
-      // it is treated as an untagged access.
-      let typ = ReadWrite(if canC(auth_val) then Tagged else Data, if rs2_cap.tag then Tagged else Data);
+      // If we don't have C permission then the tag will always be cleared
+      // and it is treated as an untagged access.
+      let typ = ReadWrite(
+        if canC(auth_val) then Tagged else Data,
+        if rs2_cap.tag then Tagged else Data
+      );
 
       match translateAddr(vaddr, typ) {
-        Err(e, ext_ptw)         => Translate_Exception(vaddr, e, ext_ptw),
+        Err(e, ext_ptw) => Translate_Exception(vaddr, e, ext_ptw),
         Ok(addr, pbmt, ext_ptw) => {
           match mem_write_ea_cap(addr, aq & rl, rl, false) {
             Err(e) => Memory_Exception(vaddr, e),
@@ -978,11 +1020,19 @@ function clause execute AMOSwapCap(rd, rs2, rs1, aq, rl) = {
               match mem_read_cap(typ, addr, pbmt, aq, aq & rl, false) {
                 Ok(v) => {
                   if cap_load_should_trap(ext_ptw, v.tag) then {
-                    Translate_Exception(vaddr, E_Extension(EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))), ext_ptw)
+                    let exc = E_Extension(
+                      EXC_CHERI(CapCheckType_Pte(CheriPage_Ld))
+                    );
+                    Translate_Exception(vaddr, exc, ext_ptw)
                   } else {
-                    match mem_write_cap(addr, pbmt, rs2_cap, aq & rl, rl, false) {
+                    match mem_write_cap(
+                      addr, pbmt, rs2_cap, aq & rl, rl, false
+                    ) {
                       Ok(_) => {
-                        let cr = clearTagIf(v, ext_ptw.cap_load_behaviour == CapLoadClear | not(canC(auth_val)));
+                        let clear_tag =
+                          ext_ptw.cap_load_behaviour == CapLoadClear |
+                          not(canC(auth_val));
+                        let cr = clearTagIf(v, clear_tag);
                         Y(rd) = legalizeLoadedPermissions(cr, auth_val);
                         RETIRE_SUCCESS
                       },
