@@ -359,10 +359,10 @@ function should_inc_mcycle(priv : Privilege) -> bool =
 function should_inc_minstret(priv : Privilege) -> bool =
   get_countinhibit()[IR] == 0b0 & counter_priv_filter_bit(minstretcfg, priv) == 0b0
 
-val tick_clock : bits(64) -> unit
-function tick_clock(cycles_increment : bits(64)) -> unit = {
+val tick_clock : unit -> unit
+function tick_clock() = {
   if   should_inc_mcycle(cur_privilege())
-  then mcycle = mcycle + cycles_increment;
+  then mcycle = mcycle + 1;
 
   mtime  = mtime  + 1;
   clint_dispatch()

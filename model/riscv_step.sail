@@ -262,7 +262,7 @@ function loop () : unit -> unit = {
       /* update time */
       i = i + 1;
       if i == plat_insns_per_tick then {
-        tick_clock(to_bits(64, 1));
+        tick_clock();
         i = 0;
       }
     }
